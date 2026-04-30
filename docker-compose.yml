@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: marlinpos_app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+    networks:
+      - marlinpos_network
+
+  web:
+    image: nginx:alpine
+    container_name: marlinpos_web
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - ./:/var/www/html
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - marlinpos_network
+    depends_on:
+      - app
+
+  db:
+    image: mysql:8.0
+    container_name: marlinpos_db
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-marlinpos}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-secret}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-secret}
+      MYSQL_USER: ${DB_USERNAME:-marlin}
+    volumes:
+      - marlinpos_db_data:/var/lib/mysql
+    networks:
+      - marlinpos_network
+
+  redis:
+    image: redis:alpine
+    container_name: marlinpos_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - marlinpos_redis_data:/data
+    networks:
+      - marlinpos_network
+
+networks:
+  marlinpos_network:
+    driver: bridge
+
+volumes:
+  marlinpos_db_data:
+  marlinpos_redis_data:

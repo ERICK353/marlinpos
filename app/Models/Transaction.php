@@ -10,7 +10,6 @@ class Transaction extends Model
 {
     protected $fillable = [
         'customer_id',
-        'staff_user_id',
         'reception_user_id',
         'payment_method',
         'mpesa_reference',
@@ -38,11 +37,6 @@ class Transaction extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
-    }
-
-    public function staff(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'staff_user_id');
     }
 
     public function reception(): BelongsTo

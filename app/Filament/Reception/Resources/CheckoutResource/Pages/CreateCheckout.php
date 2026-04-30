@@ -42,15 +42,19 @@ class CreateCheckout extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $raw         = $this->form->getRawState();
-        $serviceIds  = $raw['service_ids'] ?? [];
-        $transaction = $this->record;
+        $raw          = $this->form->getRawState();
+        $servicesData = $raw['services'] ?? [];
+        $transaction  = $this->record;
 
         // Create line items
-        foreach (Service::whereIn('id', $serviceIds)->get() as $service) {
+        foreach ($servicesData as $item) {
+            $service = Service::find($item['service_id']);
+            if (! $service) continue;
+
             TransactionItem::create([
                 'transaction_id' => $transaction->id,
                 'service_id'     => $service->id,
+                'staff_user_id'  => $item['staff_user_id'],
                 'quantity'       => 1,
                 'unit_price'     => $service->price,
                 'line_total'     => $service->price,

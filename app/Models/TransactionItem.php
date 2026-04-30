@@ -10,6 +10,7 @@ class TransactionItem extends Model
     protected $fillable = [
         'transaction_id',
         'service_id',
+        'staff_user_id',
         'quantity',
         'unit_price',
         'line_total',
@@ -31,5 +32,10 @@ class TransactionItem extends Model
     public function service(): BelongsTo
     {
         return $this->belongsTo(Service::class);
+    }
+
+    public function staff(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'staff_user_id');
     }
 }

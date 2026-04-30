@@ -39,10 +39,38 @@ class CheckoutResource extends Resource
             \Filament\Schemas\Components\Section::make('Customer')
                 ->icon('heroicon-o-user')
                 ->components([
+                    Forms\Components\Toggle::make('is_walk_in')
+                        ->label('Walk-in Customer (No loyalty tracking)')
+                        ->default(false)
+                        ->live()
+                        ->dehydrated(false)
+                        ->afterStateUpdated(function (Set $set, Get $get, $state) {
+                            if ($state) {
+                                $set('customer_phone', null);
+                                $set('customer_id', null);
+                                $set('_customer_name', null);
+                                $set('_loyalty_count', 0);
+                                $set('_loyalty_eligible', false);
+                                $set('enroll_new', false);
+
+                                // Recalculate without discount
+                                $servicesData = $get('services') ?? [];
+                                $serviceIds = array_column($servicesData, 'service_id');
+                                if (! empty($serviceIds)) {
+                                    $subtotal = Service::whereIn('id', $serviceIds)->sum('price');
+                                    $set('subtotal', $subtotal);
+                                    $set('discount', 0);
+                                    $set('total', $subtotal);
+                                }
+                            }
+                        }),
+
                     Forms\Components\TextInput::make('customer_phone')
                         ->label('Phone Number')
                         ->tel()
                         ->placeholder('Search by phone…')
+                        ->required(fn (Get $get) => ! $get('is_walk_in'))
+                        ->visible(fn (Get $get) => ! $get('is_walk_in'))
                         ->live(onBlur: true)
                         ->dehydrated(false)
                         ->afterStateUpdated(function (?string $state, Set $set, Get $get) {
@@ -62,7 +90,8 @@ class CheckoutResource extends Resource
                                 $set('_loyalty_eligible', $eligible);
 
                                 // Recalculate total with new loyalty status
-                                $serviceIds = $get('service_ids') ?? [];
+                                $servicesData = $get('services') ?? [];
+                                $serviceIds = array_column($servicesData, 'service_id');
                                 if (! empty($serviceIds)) {
                                     $subtotal = Service::whereIn('id', $serviceIds)->sum('price');
                                     $discount = $eligible ? $subtotal : 0;
@@ -77,7 +106,8 @@ class CheckoutResource extends Resource
                                 $set('_loyalty_eligible', false);
 
                                 // Recalculate without discount
-                                $serviceIds = $get('service_ids') ?? [];
+                                $servicesData = $get('services') ?? [];
+                                $serviceIds = array_column($servicesData, 'service_id');
                                 if (! empty($serviceIds)) {
                                     $subtotal = Service::whereIn('id', $serviceIds)->sum('price');
                                     $set('subtotal', $subtotal);
@@ -119,28 +149,37 @@ class CheckoutResource extends Resource
             \Filament\Schemas\Components\Section::make('Services')
                 ->icon('heroicon-o-scissors')
                 ->components([
-                    Forms\Components\CheckboxList::make('service_ids')
-                        ->label('Select Services')
-                        ->options(fn () => Service::active()->pluck('name', 'id'))
-                        ->descriptions(fn () => Service::active()->pluck('price', 'id')
-                            ->mapWithKeys(fn ($p, $id) => [$id => 'KES ' . number_format($p, 2)]))
+                    Forms\Components\Repeater::make('services')
+                        ->label('Services Performed')
+                        ->schema([
+                            Forms\Components\Select::make('service_id')
+                                ->label('Service')
+                                ->options(fn () => Service::active()->pluck('name', 'id'))
+                                ->required()
+                                ->live()
+                                ->afterStateUpdated(function (Set $set, Get $get) {
+                                    // Trigger main recalculation via live
+                                }),
+
+                            Forms\Components\Select::make('staff_user_id')
+                                ->label('Staff Member')
+                                ->options(fn () => User::where('role', 'staff')->pluck('name', 'id'))
+                                ->searchable()
+                                ->required(),
+                        ])
                         ->columns(2)
+                        ->defaultItems(1)
                         ->live()
                         ->dehydrated(false)
                         ->afterStateUpdated(function (?array $state, Set $set, Get $get) {
-                            $subtotal = Service::whereIn('id', $state ?? [])->sum('price');
+                            $serviceIds = array_column($state ?? [], 'service_id');
+                            $subtotal = Service::whereIn('id', $serviceIds)->sum('price');
                             $eligible = (bool) $get('_loyalty_eligible');
                             $discount = $eligible ? $subtotal : 0;
                             $set('subtotal', $subtotal);
                             $set('discount', $discount);
                             $set('total', $subtotal - $discount);
                         })
-                        ->required(),
-
-                    Forms\Components\Select::make('staff_user_id')
-                        ->label('Barber')
-                        ->options(fn () => User::where('role', 'staff')->pluck('name', 'id'))
-                        ->searchable()
                         ->required(),
                 ]),
 
@@ -191,7 +230,10 @@ class CheckoutResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('id')->label('TX #'),
                 Tables\Columns\TextColumn::make('customer.phone')->label('Customer')->placeholder('Walk-in'),
-                Tables\Columns\TextColumn::make('staff.name')->label('Barber'),
+                Tables\Columns\TextColumn::make('items.staff.name')
+                    ->label('Staff')
+                    ->listWithLineBreaks()
+                    ->bulleted(),
                 Tables\Columns\TextColumn::make('payment_method')
                     ->badge()
                     ->formatStateUsing(fn ($s) => strtoupper($s))
