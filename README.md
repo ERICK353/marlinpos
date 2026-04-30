@@ -55,6 +55,3 @@ The system comes pre-seeded with the following accounts (all use `password` as t
 ## 🎨 Design Aesthetics
 
 The application follows a premium dark-themed design (by default via Filament) with custom HSL-tailored color palettes for status badges and transaction states. It uses modern typography (Inter) and subtle micro-animations for a high-end feel.
-
----
-Built with ❤️ by Antigravity
