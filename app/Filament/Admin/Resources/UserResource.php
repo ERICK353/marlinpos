@@ -31,7 +31,7 @@ class UserResource extends Resource
                 Forms\Components\Select::make('role')
                     ->options([
                         'admin'     => 'Admin / Owner',
-                        'staff'     => 'Staff (Barber)',
+                        'staff'     => 'Staff',
                         'reception' => 'Reception / Operator',
                     ])
                     ->required(),
@@ -63,7 +63,7 @@ class UserResource extends Resource
                     })
                     ->formatStateUsing(fn ($state) => match ($state) {
                         'admin'     => 'Admin',
-                        'staff'     => 'Barber',
+                        'staff'     => 'Staff',
                         'reception' => 'Reception',
                         default     => $state,
                     }),
@@ -71,7 +71,7 @@ class UserResource extends Resource
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('role')
-                    ->options(['admin' => 'Admin', 'staff' => 'Barber', 'reception' => 'Reception']),
+                    ->options(['admin' => 'Admin', 'staff' => 'Staff', 'reception' => 'Reception']),
             ])
             ->actions([
                 \Filament\Actions\EditAction::make(),

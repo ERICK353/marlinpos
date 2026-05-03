@@ -15,7 +15,7 @@ class ServiceResource extends Resource
     protected static ?string $model = Service::class;
 
     public static function getNavigationIcon(): string { return 'heroicon-o-sparkles'; }
-    public static function getNavigationGroup(): ?string { return 'Barbershop'; }
+    public static function getNavigationGroup(): ?string { return 'Shop'; }
     public static function getNavigationSort(): ?int { return 1; }
 
     public static function form(Schema $schema): Schema

@@ -15,7 +15,7 @@ class CustomerResource extends Resource
     protected static ?string $model = Customer::class;
 
     public static function getNavigationIcon(): string { return 'heroicon-o-user-group'; }
-    public static function getNavigationGroup(): ?string { return 'Barbershop'; }
+    public static function getNavigationGroup(): ?string { return 'Shop'; }
     public static function getNavigationSort(): ?int { return 2; }
 
     public static function form(Schema $schema): Schema

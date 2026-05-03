@@ -66,9 +66,9 @@ class User extends Authenticatable implements FilamentUser
 
     // ── Relations ─────────────────────────────────────────────────────────────
 
-    public function staffTransactions()
+    public function transactionItems()
     {
-        return $this->hasMany(Transaction::class, 'staff_user_id');
+        return $this->hasMany(TransactionItem::class, 'staff_user_id');
     }
 
     public function receptionTransactions()

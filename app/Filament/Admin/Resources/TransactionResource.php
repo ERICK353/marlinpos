@@ -14,7 +14,7 @@ class TransactionResource extends Resource
     protected static ?string $model = Transaction::class;
 
     public static function getNavigationIcon(): string { return 'heroicon-o-banknotes'; }
-    public static function getNavigationGroup(): ?string { return 'Barbershop'; }
+    public static function getNavigationGroup(): ?string { return 'Shop'; }
     public static function getNavigationSort(): ?int { return 3; }
 
     public static function form(Schema $schema): Schema
@@ -28,7 +28,8 @@ class TransactionResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('id')->label('TX #')->sortable(),
                 Tables\Columns\TextColumn::make('customer.phone')->label('Customer')->placeholder('Walk-in')->searchable(),
-                Tables\Columns\TextColumn::make('staff.name')->label('Barber')->searchable(),
+                Tables\Columns\TextColumn::make('items.staff.name')->label('Staff')->searchable(),
+                Tables\Columns\TextColumn::make('items.service.name')->label('Services')->searchable(),
                 Tables\Columns\TextColumn::make('payment_method')
                     ->badge()
                     ->color(fn ($state) => $state === 'mpesa' ? 'success' : 'info')

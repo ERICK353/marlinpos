@@ -27,7 +27,7 @@ class StaffLogResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('user.name')->label('Barber')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('user.name')->label('Staff')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('log_date')->date()->sortable(),
                 Tables\Columns\TextColumn::make('logged_in_at')->time()->label('Time In'),
                 Tables\Columns\TextColumn::make('logged_out_at')->time()->label('Time Out')->placeholder('Active'),

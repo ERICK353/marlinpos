@@ -25,7 +25,7 @@ class StaffTransactionResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn ($query) => $query->where('staff_user_id', auth()->id()))
+            ->modifyQueryUsing(fn ($query) => $query->whereHas('items', fn ($q) => $q->where('staff_user_id', auth()->id())))
             ->columns([
                 Tables\Columns\TextColumn::make('id')->label('TX #')->sortable(),
                 Tables\Columns\TextColumn::make('customer.phone')->label('Customer')->placeholder('Walk-in'),

@@ -242,7 +242,15 @@ class CheckoutResource extends Resource
                 Tables\Columns\IconColumn::make('is_free_shave')->boolean()->label('Free'),
                 Tables\Columns\TextColumn::make('served_at')->dateTime()->since(),
             ])
-            ->actions([\Filament\Actions\ViewAction::make()])
+            ->actions([
+                \Filament\Actions\ViewAction::make(),
+                \Filament\Actions\Action::make('print_receipt')
+                    ->label('Print Receipt')
+                    ->icon('heroicon-o-printer')
+                    ->color('success')
+                    ->url(fn (Transaction $record) => route('receipt.show', $record))
+                    ->openUrlInNewTab(),
+            ])
             ->bulkActions([]);
     }
 

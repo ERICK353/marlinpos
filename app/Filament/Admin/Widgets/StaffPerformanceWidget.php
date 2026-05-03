@@ -23,18 +23,18 @@ class StaffPerformanceWidget extends BaseWidget
             ->query(
                 User::where('role', 'staff')
                     ->withCount([
-                        'staffTransactions as transactions_count' => fn ($q) =>
-                            $q->where('served_at', '>=', $monthStart),
+                        'transactionItems as transactions_count' => fn ($q) =>
+                            $q->whereHas('transaction', fn ($t) => $t->where('served_at', '>=', $monthStart)),
                     ])
                     ->withSum(
-                        ['staffTransactions as revenue_sum' => fn ($q) =>
-                            $q->where('served_at', '>=', $monthStart)],
-                        'total'
+                        ['transactionItems as revenue_sum' => fn ($q) =>
+                            $q->whereHas('transaction', fn ($t) => $t->where('served_at', '>=', $monthStart))],
+                        'line_total'
                     )
                     ->orderByDesc('revenue_sum')
             )
             ->columns([
-                Tables\Columns\TextColumn::make('name')->label('Barber'),
+                Tables\Columns\TextColumn::make('name')->label('Staff'),
                 Tables\Columns\TextColumn::make('transactions_count')
                     ->label('Transactions')
                     ->badge()->color('info'),

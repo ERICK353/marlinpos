@@ -19,7 +19,8 @@ class ViewTransaction extends ViewRecord
                 Infolists\Components\TextEntry::make('served_at')->dateTime(),
                 Infolists\Components\TextEntry::make('customer.phone')->label('Customer Phone')->placeholder('Walk-in'),
                 Infolists\Components\TextEntry::make('customer.name')->label('Customer Name')->placeholder('—'),
-                Infolists\Components\TextEntry::make('staff.name')->label('Barber'),
+                Infolists\Components\TextEntry::make('items.staff.name')->label('Staff'),
+                Infolists\Components\TextEntry::make('items.service.name')->label('Services'),
                 Infolists\Components\TextEntry::make('reception.name')->label('Reception'),
                 Infolists\Components\TextEntry::make('payment_method')->badge()
                     ->formatStateUsing(fn ($state) => strtoupper($state)),
