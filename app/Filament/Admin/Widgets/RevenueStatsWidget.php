@@ -21,6 +21,9 @@ class RevenueStatsWidget extends BaseWidget
         $weekRevenue    = Transaction::where('served_at', '>=', $weekStart)->sum('total');
         $monthRevenue   = Transaction::where('served_at', '>=', $monthStart)->sum('total');
 
+        $monthExpenses = \App\Models\Expense::where('spent_at', '>=', $monthStart)->sum('amount');
+        $monthProfit   = $monthRevenue - $monthExpenses;
+
         $todayCount  = Transaction::whereDate('served_at', $today)->count();
         $weekCount   = Transaction::where('served_at', '>=', $weekStart)->count();
 
@@ -30,15 +33,15 @@ class RevenueStatsWidget extends BaseWidget
                 ->descriptionIcon('heroicon-m-users')
                 ->color('success'),
 
-            Stat::make('This Week', 'KES ' . number_format($weekRevenue, 2))
-                ->description("{$weekCount} transactions")
-                ->descriptionIcon('heroicon-m-calendar-days')
+            Stat::make('This Month\'s Revenue', 'KES ' . number_format($monthRevenue, 2))
+                ->description(Carbon::now()->format('F Y'))
+                ->descriptionIcon('heroicon-m-banknotes')
                 ->color('info'),
 
-            Stat::make('This Month', 'KES ' . number_format($monthRevenue, 2))
-                ->description(Carbon::now()->format('F Y'))
-                ->descriptionIcon('heroicon-m-chart-bar')
-                ->color('warning'),
+            Stat::make('Net Profit (Month)', 'KES ' . number_format($monthProfit, 2))
+                ->description('Revenue - Expenses')
+                ->descriptionIcon('heroicon-m-chart-pie')
+                ->color($monthProfit >= 0 ? 'success' : 'danger'),
         ];
     }
 }

@@ -49,15 +49,21 @@ class CreateCheckout extends CreateRecord
         // Create line items
         foreach ($servicesData as $item) {
             $service = Service::find($item['service_id']);
-            if (! $service) continue;
+            $staff   = User::find($item['staff_user_id']);
+            if (! $service || ! $staff) continue;
+
+            $commissionRate = $staff->commission_rate ?? 40;
+            $commissionAmount = ($service->price * $commissionRate) / 100;
 
             TransactionItem::create([
-                'transaction_id' => $transaction->id,
-                'service_id'     => $service->id,
-                'staff_user_id'  => $item['staff_user_id'],
-                'quantity'       => 1,
-                'unit_price'     => $service->price,
-                'line_total'     => $service->price,
+                'transaction_id'    => $transaction->id,
+                'service_id'        => $service->id,
+                'staff_user_id'     => $staff->id,
+                'quantity'          => 1,
+                'unit_price'        => $service->price,
+                'line_total'        => $service->price,
+                'commission_rate'   => $commissionRate,
+                'commission_amount' => $commissionAmount,
             ]);
         }
 

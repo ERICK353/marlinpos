@@ -42,6 +42,13 @@ class UserResource extends Resource
                     ->dehydrateStateUsing(fn ($state) => filled($state) ? bcrypt($state) : null)
                     ->dehydrated(fn ($state) => filled($state))
                     ->maxLength(255),
+                Forms\Components\TextInput::make('commission_rate')
+                    ->label('Commission Rate (%)')
+                    ->numeric()
+                    ->default(40)
+                    ->suffix('%')
+                    ->required()
+                    ->helperText('Default is 40%. This is the percentage of service price the staff receives.'),
             ])->columns(2),
         ]);
     }

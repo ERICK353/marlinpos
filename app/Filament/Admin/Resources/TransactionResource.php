@@ -41,6 +41,11 @@ class TransactionResource extends Resource
             ->filters([
                 Tables\Filters\SelectFilter::make('payment_method')
                     ->options(['cash' => 'Cash', 'mpesa' => 'M-Pesa']),
+                Tables\Filters\SelectFilter::make('staff')
+                    ->relationship('items.staff', 'name')
+                    ->label('Staff Member')
+                    ->searchable()
+                    ->preload(),
                 Tables\Filters\TernaryFilter::make('is_free_shave')->label('Free Shave'),
             ])
             ->defaultSort('served_at', 'desc')

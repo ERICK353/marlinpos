@@ -14,13 +14,17 @@ class TransactionItem extends Model
         'quantity',
         'unit_price',
         'line_total',
+        'commission_rate',
+        'commission_amount',
     ];
 
     protected function casts(): array
     {
         return [
-            'unit_price' => 'decimal:2',
-            'line_total' => 'decimal:2',
+            'unit_price'        => 'decimal:2',
+            'line_total'        => 'decimal:2',
+            'commission_rate'   => 'decimal:2',
+            'commission_amount' => 'decimal:2',
         ];
     }
 

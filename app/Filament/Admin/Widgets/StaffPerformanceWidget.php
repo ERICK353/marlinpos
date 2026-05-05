@@ -31,6 +31,11 @@ class StaffPerformanceWidget extends BaseWidget
                             $q->whereHas('transaction', fn ($t) => $t->where('served_at', '>=', $monthStart))],
                         'line_total'
                     )
+                    ->withSum(
+                        ['transactionItems as commission_sum' => fn ($q) =>
+                            $q->whereHas('transaction', fn ($t) => $t->where('served_at', '>=', $monthStart))],
+                        'commission_amount'
+                    )
                     ->orderByDesc('revenue_sum')
             )
             ->columns([
@@ -42,6 +47,17 @@ class StaffPerformanceWidget extends BaseWidget
                     ->label('Revenue')
                     ->formatStateUsing(fn ($state) => 'KES ' . number_format($state ?? 0, 2))
                     ->badge()->color('success'),
+                Tables\Columns\TextColumn::make('commission_sum')
+                    ->label('Commission')
+                    ->getStateUsing(function (User $record) {
+                        $monthStart = Carbon::now()->startOfMonth();
+                        return $record->transactionItems()
+                            ->whereHas('transaction', fn ($t) => $t->where('served_at', '>=', $monthStart))
+                            ->get()
+                            ->sum(fn ($item) => $item->commission_amount ?? ($item->line_total * ($record->commission_rate ?? 40) / 100));
+                    })
+                    ->formatStateUsing(fn ($state) => 'KES ' . number_format($state ?? 0, 2))
+                    ->badge()->color('warning'),
             ])
             ->paginated(false);
     }
