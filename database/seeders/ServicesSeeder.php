@@ -10,10 +10,10 @@ class ServicesSeeder extends Seeder
     public function run(): void
     {
         $services = [
-            ['name' => 'Hair Cut (H/CUT)', 'price' => 350, 'sort_order' => 1],
-            ['name' => 'Beard Cut (B/CUT)', 'price' => 200, 'sort_order' => 2],
-            ['name' => 'Teens', 'price' => 200, 'sort_order' => 3],
-            ['name' => 'Back to School', 'price' => 150, 'sort_order' => 4],
+            ['name' => 'Hair Cut (H/CUT)', 'price' => 350, 'sort_order' => 1, 'is_haircut' => true],
+            ['name' => 'Beard Cut (B/CUT)', 'price' => 200, 'sort_order' => 2, 'is_haircut' => false],
+            ['name' => 'Teens', 'price' => 200, 'sort_order' => 3, 'is_haircut' => true],
+            ['name' => 'Back to School', 'price' => 150, 'sort_order' => 4, 'is_haircut' => true],
             ['name' => 'Steaming', 'price' => 700, 'sort_order' => 5],
             ['name' => 'Scrub (500)', 'price' => 500, 'sort_order' => 6],
             ['name' => 'Scrub (800)', 'price' => 800, 'sort_order' => 7],

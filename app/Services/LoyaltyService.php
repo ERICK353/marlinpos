@@ -16,19 +16,34 @@ class LoyaltyService
      */
     public function apply(Customer $customer, Transaction $transaction): void
     {
-        if ($customer->isEligibleForFreeShave()) {
-            $transaction->is_free_shave = true;
-            $transaction->discount      = $transaction->subtotal;
-            $transaction->total         = 0;
-            $customer->loyalty_count    = 0;
-            $customer->free_shaves_used = $customer->free_shaves_used + 1;
-        } else {
-            $customer->loyalty_count = $customer->loyalty_count + 1;
+        // Ensure we have the latest items and services loaded
+        $transaction->loadMissing('items.service');
+
+        // Count how many actual haircuts are in this transaction
+        $haircutsInTransaction = $transaction->items->filter(function ($item) {
+            if (! $item->service) return false;
+            return $item->service->is_haircut || 
+                   stripos($item->service->name, 'Hair Cut') !== false || 
+                   stripos($item->service->name, 'Haircut') !== false;
+        })->count();
+
+        // Ensure the customer instance is fresh
+        $customer->refresh();
+
+        // Process each haircut individually
+        for ($i = 0; $i < $haircutsInTransaction; $i++) {
+            if ($customer->isEligibleForFreeHaircut()) {
+                // Hit the 10th haircut!
+                $customer->loyalty_count = 0;
+                $customer->free_haircuts_used++;
+            } else {
+                // Increment counter towards the 10th
+                $customer->loyalty_count++;
+            }
         }
 
-        $customer->total_visits = $customer->total_visits + 1;
+        $customer->total_visits++;
         $customer->save();
-
         $transaction->save();
     }
 

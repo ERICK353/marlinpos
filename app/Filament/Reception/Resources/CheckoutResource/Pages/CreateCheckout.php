@@ -6,6 +6,7 @@ use App\Filament\Reception\Resources\CheckoutResource;
 use App\Models\Customer;
 use App\Models\Service;
 use App\Models\TransactionItem;
+use App\Models\User;
 use App\Services\LoyaltyService;
 use Filament\Resources\Pages\CreateRecord;
 
@@ -23,8 +24,9 @@ class CreateCheckout extends CreateRecord
             $customer = Customer::firstOrCreate(
                 ['phone' => $raw['customer_phone']],
                 [
-                    'name'        => $raw['new_customer_name'] ?? null,
-                    'enrolled_at' => now(),
+                    'name'          => $raw['new_customer_name'] ?? null,
+                    'loyalty_count' => $raw['initial_loyalty_count'] ?? 0,
+                    'enrolled_at'   => now(),
                 ]
             );
             $data['customer_id'] = $customer->id;
@@ -34,8 +36,8 @@ class CreateCheckout extends CreateRecord
         $data['reception_user_id'] = auth()->id();
         $data['served_at']         = now();
 
-        // Derive free-shave flag from loyalty state
-        $data['is_free_shave'] = (bool) ($raw['_loyalty_eligible'] ?? false);
+        // Derive free-haircut flag from loyalty state
+        $data['is_free_haircut'] = (bool) ($raw['_loyalty_eligible'] ?? false);
 
         return $data;
     }

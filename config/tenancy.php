@@ -6,17 +6,17 @@ use Stancl\Tenancy\Database\Models\Domain;
 use Stancl\Tenancy\Database\Models\Tenant;
 
 return [
-    'tenant_model' => Tenant::class,
+    'tenant_model' => \App\Models\Tenant::class,
     'id_generator' => Stancl\Tenancy\UUIDGenerator::class,
 
-   'tenant_model' => \App\Models\Tenant::class,
+     'domain_model' => Domain::class,
+
     /**
      * The list of domains hosting your central app.
      *
      * Only relevant if you're using the domain or subdomain identification middleware.
      */
     'central_domains' => [
-        '127.0.0.1',
         'localhost',
     ],
 
@@ -135,7 +135,7 @@ return [
          * disable asset() helper tenancy and explicitly use tenant_asset() calls in places
          * where you want to use tenant-specific assets (product images, avatars, etc).
          */
-        'asset_helper_tenancy' => true,
+        'asset_helper_tenancy' => false,
     ],
 
     /**
@@ -165,7 +165,7 @@ return [
     'features' => [
         // Stancl\Tenancy\Features\UserImpersonation::class,
         // Stancl\Tenancy\Features\TelescopeTags::class,
-        // Stancl\Tenancy\Features\UniversalRoutes::class,
+        Stancl\Tenancy\Features\UniversalRoutes::class,
         // Stancl\Tenancy\Features\TenantConfig::class, // https://tenancyforlaravel.com/docs/v3/features/tenant-config
         // Stancl\Tenancy\Features\CrossDomainRedirect::class, // https://tenancyforlaravel.com/docs/v3/features/cross-domain-redirect
         // Stancl\Tenancy\Features\ViteBundler::class,
@@ -193,7 +193,7 @@ return [
      * Parameters used by the tenants:seed command.
      */
     'seeder_parameters' => [
-        '--class' => 'DatabaseSeeder', // root seeder class
+        '--class' => 'Database\Seeders\TenantDatabaseSeeder', // root seeder class
         // '--force' => true, // This needs to be true to seed tenant databases in production
     ],
 ];

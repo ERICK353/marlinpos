@@ -9,6 +9,7 @@ class Service extends Model
 {
     protected $fillable = [
         'name',
+        'is_haircut',
         'price',
         'description',
         'is_active',
@@ -18,8 +19,9 @@ class Service extends Model
     protected function casts(): array
     {
         return [
-            'price'     => 'decimal:2',
-            'is_active' => 'boolean',
+            'price'      => 'decimal:2',
+            'is_active'  => 'boolean',
+            'is_haircut' => 'boolean',
         ];
     }
 

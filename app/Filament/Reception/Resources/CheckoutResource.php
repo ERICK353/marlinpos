@@ -30,7 +30,6 @@ class CheckoutResource extends Resource
         return $schema->components([
 
             // ── Hidden state fields (virtual, not saved directly) ─────────────
-            Forms\Components\Hidden::make('customer_id'),
             Forms\Components\Hidden::make('_loyalty_eligible')->default(false)->dehydrated(false),
             Forms\Components\Hidden::make('_customer_name')->dehydrated(false),
             Forms\Components\Hidden::make('_loyalty_count')->default(0)->dehydrated(false),
@@ -65,74 +64,93 @@ class CheckoutResource extends Resource
                             }
                         }),
 
-                    Forms\Components\TextInput::make('customer_phone')
-                        ->label('Phone Number')
-                        ->tel()
-                        ->placeholder('Search by phone…')
+                    Forms\Components\Select::make('customer_id')
+                        ->label('Select Customer')
+                        ->placeholder('Search by name or phone…')
+                        ->searchable()
+                        ->getSearchResultsUsing(fn (string $search) => 
+                            Customer::where('name', 'like', "%{$search}%")
+                                ->orWhere('phone', 'like', "%{$search}%")
+                                ->limit(50)
+                                ->get()
+                                ->mapWithKeys(fn ($c) => [$c->id => ($c->name ?? 'Unnamed') . " ({$c->phone})"])
+                        )
+                        ->getOptionLabelUsing(fn ($value) => Customer::find($value) ? (Customer::find($value)->name ?? 'Unnamed') . ' (' . Customer::find($value)->phone . ')' : null)
                         ->required(fn (Get $get) => ! $get('is_walk_in'))
                         ->visible(fn (Get $get) => ! $get('is_walk_in'))
-                        ->live(onBlur: true)
-                        ->dehydrated(false)
-                        ->afterStateUpdated(function (?string $state, Set $set, Get $get) {
-                            if (blank($state)) {
-                                $set('customer_id', null);
+                        ->live()
+                        ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                            if (! $state) {
                                 $set('_customer_name', null);
                                 $set('_loyalty_count', 0);
                                 $set('_loyalty_eligible', false);
                                 return;
                             }
-                            $customer = Customer::where('phone', $state)->first();
+
+                            $customer = Customer::find($state);
                             if ($customer) {
-                                $eligible = $customer->isEligibleForFreeShave();
-                                $set('customer_id', $customer->id);
+                                $eligible = $customer->isEligibleForFreeHaircut();
                                 $set('_customer_name', $customer->name ?? 'Enrolled member');
                                 $set('_loyalty_count', $customer->loyalty_count);
                                 $set('_loyalty_eligible', $eligible);
 
-                                // Recalculate total with new loyalty status
+                                // Recalculate totals
                                 $servicesData = $get('services') ?? [];
                                 $serviceIds = array_column($servicesData, 'service_id');
                                 if (! empty($serviceIds)) {
-                                    $subtotal = Service::whereIn('id', $serviceIds)->sum('price');
-                                    $discount = $eligible ? $subtotal : 0;
+                                    $services = Service::whereIn('id', $serviceIds)->get();
+                                    $subtotal = $services->sum('price');
+                                    $haircutServices = $services->filter(fn($s) => $s->is_haircut);
+                                    
+                                    $discount = ($eligible && $haircutServices->isNotEmpty()) 
+                                        ? $haircutServices->max('price') 
+                                        : 0;
+                                    
                                     $set('subtotal', $subtotal);
                                     $set('discount', $discount);
                                     $set('total', $subtotal - $discount);
                                 }
-                            } else {
-                                $set('customer_id', null);
-                                $set('_customer_name', null);
-                                $set('_loyalty_count', 0);
-                                $set('_loyalty_eligible', false);
+                            }
+                        }),
 
-                                // Recalculate without discount
-                                $servicesData = $get('services') ?? [];
-                                $serviceIds = array_column($servicesData, 'service_id');
-                                if (! empty($serviceIds)) {
-                                    $subtotal = Service::whereIn('id', $serviceIds)->sum('price');
-                                    $set('subtotal', $subtotal);
-                                    $set('discount', 0);
-                                    $set('total', $subtotal);
-                                }
+                    // Keep phone input for manual entry/enrollment if not found in dropdown
+                    Forms\Components\TextInput::make('customer_phone')
+                        ->label('New Customer Phone')
+                        ->tel()
+                        ->placeholder('Enter phone to enroll…')
+                        ->visible(fn (Get $get) => ! $get('is_walk_in') && blank($get('customer_id')))
+                        ->live(onBlur: true)
+                        ->dehydrated(false)
+                        ->afterStateUpdated(function (?string $state, Set $set, Get $get) {
+                            if (blank($state)) return;
+                            
+                            // If phone already exists, switch to that customer automatically
+                            $customer = Customer::where('phone', $state)->first();
+                            if ($customer) {
+                                $set('customer_id', $customer->id);
+                                $set('_customer_name', $customer->name ?? 'Enrolled member');
+                                $set('_loyalty_count', $customer->loyalty_count);
+                                $set('_loyalty_eligible', $customer->isEligibleForFreeHaircut());
+                                $set('enroll_new', false);
                             }
                         }),
 
                     Forms\Components\Placeholder::make('_customer_info')
-                        ->label('Loyalty Status')
+                        ->label('Haircut Loyalty Status')
                         ->visible(fn (Get $get) => filled($get('customer_id')))
                         ->content(function (Get $get) {
                             $count    = $get('_loyalty_count') ?? 0;
                             $eligible = (bool) $get('_loyalty_eligible');
                             $name     = $get('_customer_name') ?? 'Customer';
                             if ($eligible) {
-                                return "⭐ {$name} — FREE SHAVE ELIGIBLE! (9/9 shaves completed)";
+                                return "⭐ {$name} — FREE HAIRCUT ELIGIBLE! (9/9 haircuts completed)";
                             }
-                            return "{$name} — Loyalty progress: {$count}/9 shaves";
+                            return "{$name} — Haircut progress: {$count}/9 haircuts";
                         }),
 
                     // New enrollment toggle
                     Forms\Components\Toggle::make('enroll_new')
-                        ->label('Enroll as new loyalty member')
+                        ->label('Enroll in Haircut Loyalty Program')
                         ->live()
                         ->dehydrated(false)
                         ->visible(fn (Get $get) => blank($get('customer_id')) && filled($get('customer_phone'))),
@@ -142,8 +160,18 @@ class CheckoutResource extends Resource
                         ->maxLength(100)
                         ->dehydrated(false)
                         ->visible(fn (Get $get) => (bool) $get('enroll_new')),
+
+                    Forms\Components\TextInput::make('initial_loyalty_count')
+                        ->label('Initial Haircut Count')
+                        ->numeric()
+                        ->default(0)
+                        ->minValue(0)
+                        ->maxValue(9)
+                        ->helperText('Previous haircuts before enrollment (0-9).')
+                        ->dehydrated(false)
+                        ->visible(fn (Get $get) => (bool) $get('enroll_new')),
                 ])
-                ->columns(2),
+                ->columns(3),
 
             // ── Services ──────────────────────────────────────────────────────
             \Filament\Schemas\Components\Section::make('Services')
@@ -173,9 +201,22 @@ class CheckoutResource extends Resource
                         ->dehydrated(false)
                         ->afterStateUpdated(function (?array $state, Set $set, Get $get) {
                             $serviceIds = array_column($state ?? [], 'service_id');
-                            $subtotal = Service::whereIn('id', $serviceIds)->sum('price');
+                            if (empty($serviceIds)) {
+                                $set('subtotal', 0);
+                                $set('discount', 0);
+                                $set('total', 0);
+                                return;
+                            }
+                            
+                            $services = Service::whereIn('id', $serviceIds)->get();
+                            $subtotal = $services->sum('price');
                             $eligible = (bool) $get('_loyalty_eligible');
-                            $discount = $eligible ? $subtotal : 0;
+                            $haircutServices = $services->filter(fn($s) => $s->is_haircut);
+                            
+                            $discount = ($eligible && $haircutServices->isNotEmpty()) 
+                                ? $haircutServices->max('price') 
+                                : 0;
+                            
                             $set('subtotal', $subtotal);
                             $set('discount', $discount);
                             $set('total', $subtotal - $discount);
@@ -206,7 +247,7 @@ class CheckoutResource extends Resource
                         ->numeric()->disabled()->dehydrated()->default(0),
 
                     Forms\Components\TextInput::make('discount')
-                        ->label('Loyalty Discount')->prefix('KES')
+                        ->label('Haircut Reward')->prefix('KES')
                         ->numeric()->disabled()->dehydrated()->default(0),
 
                     Forms\Components\TextInput::make('total')
@@ -228,8 +269,30 @@ class CheckoutResource extends Resource
                       ->orderByDesc('served_at')
             )
             ->columns([
-                Tables\Columns\TextColumn::make('id')->label('TX #'),
-                Tables\Columns\TextColumn::make('customer.phone')->label('Customer')->placeholder('Walk-in'),
+                Tables\Columns\TextColumn::make('customer.name')
+                    ->label('Customer')
+                    ->formatStateUsing(function ($state, $record) {
+                        if (! $record->customer_id) return 'Walk-in';
+                        return $state ?? 'Unnamed';
+                    }),
+                Tables\Columns\TextColumn::make('customer.phone')->label('Phone')->placeholder('—'),
+                Tables\Columns\TextColumn::make('customer.loyalty_count')
+                    ->label('New Progress')
+                    ->html()
+                    ->formatStateUsing(function ($state) {
+                        if ($state === null) return '—';
+                        $percent = min(100, round(($state / 9) * 100));
+                        $color = $state >= 9 ? '#10b981' : '#10b981';
+                        
+                        return "
+                            <div class='flex items-center gap-3' style='min-width: 120px;'>
+                                <div class='flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden'>
+                                    <div class='h-full' style='width: {$percent}%; background-color: {$color};'></div>
+                                </div>
+                                <span class='text-xs font-medium'>{$state}/9</span>
+                            </div>
+                        ";
+                    }),
                 Tables\Columns\TextColumn::make('items.staff.name')
                     ->label('Staff')
                     ->listWithLineBreaks()
@@ -239,7 +302,7 @@ class CheckoutResource extends Resource
                     ->formatStateUsing(fn ($s) => strtoupper($s))
                     ->color(fn ($s) => $s === 'mpesa' ? 'success' : 'info'),
                 Tables\Columns\TextColumn::make('total')->money('KES'),
-                Tables\Columns\IconColumn::make('is_free_shave')->boolean()->label('Free'),
+                Tables\Columns\IconColumn::make('is_free_haircut')->boolean()->label('Free Haircut'),
                 Tables\Columns\TextColumn::make('served_at')->dateTime()->since(),
             ])
             ->actions([

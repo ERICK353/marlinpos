@@ -14,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\EnsureRole::class,
         ]);
+        $middleware->group('universal', []);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

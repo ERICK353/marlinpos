@@ -16,6 +16,7 @@ use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
 
 class ReceptionPanelProvider extends PanelProvider
 {
@@ -48,6 +49,7 @@ class ReceptionPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
+                InitializeTenancyByDomain::class,
             ])
             ->authMiddleware([
                 Authenticate::class,

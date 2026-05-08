@@ -28,14 +28,20 @@ class StaffTransactionResource extends Resource
             ->modifyQueryUsing(fn ($query) => $query->whereHas('items', fn ($q) => $q->where('staff_user_id', auth()->id())))
             ->columns([
                 Tables\Columns\TextColumn::make('id')->label('TX #')->sortable(),
-                Tables\Columns\TextColumn::make('customer.phone')->label('Customer')->placeholder('Walk-in'),
+                Tables\Columns\TextColumn::make('customer.name')
+                    ->label('Customer')
+                    ->formatStateUsing(function ($state, $record) {
+                        if (! $record->customer_id) return 'Walk-in';
+                        return $state ?? 'Unnamed';
+                    }),
+                Tables\Columns\TextColumn::make('customer.phone')->label('Phone')->placeholder('—'),
                 Tables\Columns\TextColumn::make('items_summary')
                     ->label('Services')
                     ->getStateUsing(fn (Transaction $record) =>
                         $record->items->map(fn ($i) => $i->service->name)->join(', ')
                     ),
                 Tables\Columns\TextColumn::make('total')->money('KES'),
-                Tables\Columns\IconColumn::make('is_free_shave')->boolean()->label('Free'),
+                Tables\Columns\IconColumn::make('is_free_haircut')->boolean()->label('Free'),
                 Tables\Columns\TextColumn::make('payment_method')
                     ->badge()
                     ->formatStateUsing(fn ($s) => strtoupper($s)),

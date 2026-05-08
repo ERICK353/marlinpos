@@ -169,7 +169,7 @@
         </tr>
         @if ($transaction->discount > 0)
         <tr>
-            <td>Loyalty Discount</td>
+            <td>Haircut Loyalty Reward</td>
             <td style="text-align:right; color:#16a34a;">- KES {{ number_format($transaction->discount, 2) }}</td>
         </tr>
         @endif
@@ -187,9 +187,9 @@
         @endif
     </div>
 
-    {{-- Free Shave Badge --}}
-    @if ($transaction->is_free_shave)
-    <div class="loyalty-badge">Free Shave Applied — Loyalty Reward</div>
+    {{-- Free Haircut Badge --}}
+    @if ($transaction->is_free_haircut)
+    <div class="loyalty-badge">Free Haircut Applied — Loyalty Reward</div>
     @endif
 
     {{-- Notes --}}

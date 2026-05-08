@@ -13,7 +13,7 @@ class Transaction extends Model
         'reception_user_id',
         'payment_method',
         'mpesa_reference',
-        'is_free_shave',
+        'is_free_haircut',
         'subtotal',
         'discount',
         'total',
@@ -24,7 +24,7 @@ class Transaction extends Model
     protected function casts(): array
     {
         return [
-            'is_free_shave' => 'boolean',
+            'is_free_haircut' => 'boolean',
             'subtotal'      => 'decimal:2',
             'discount'      => 'decimal:2',
             'total'         => 'decimal:2',

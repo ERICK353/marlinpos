@@ -27,7 +27,14 @@ class CustomerResource extends Resource
                 Forms\Components\TextInput::make('phone')
                     ->label('Phone Number')->tel()->required()
                     ->unique(ignoreRecord: true)->maxLength(20),
-            ])->columns(2),
+                Forms\Components\TextInput::make('loyalty_count')
+                    ->label('Haircuts Completed (Initial)')
+                    ->numeric()
+                    ->default(0)
+                    ->minValue(0)
+                    ->maxValue(9)
+                    ->helperText('Initial count of haircuts for existing customers (0-9).'),
+            ])->columns(3),
         ]);
     }
 
@@ -36,13 +43,26 @@ class CustomerResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('id')->label('ID')->sortable(),
-                Tables\Columns\TextColumn::make('name')->searchable()->placeholder('—'),
+                Tables\Columns\TextColumn::make('name')->searchable()->placeholder('Unnamed'),
                 Tables\Columns\TextColumn::make('phone')->searchable(),
                 Tables\Columns\TextColumn::make('loyalty_count')
-                    ->label('Loyalty')
-                    ->formatStateUsing(fn ($s) => "{$s}/9")
-                    ->badge()
-                    ->color(fn ($s) => $s >= 9 ? 'success' : 'gray'),
+                    ->label('Haircut Progress')
+                    ->html()
+                    ->formatStateUsing(function ($state) {
+                        $percent = min(100, round(($state / 9) * 100));
+                        $color = $state >= 9 ? '#10b981' : '#10b981'; // Using emerald for both for a clean look, or different for contrast
+                        $bg = $state >= 9 ? 'bg-emerald-100' : 'bg-gray-100';
+                        $bar = $state >= 9 ? 'bg-emerald-500' : 'bg-primary-500';
+                        
+                        return "
+                            <div class='flex items-center gap-3' style='min-width: 140px;'>
+                                <div class='flex-1 h-2 bg-gray-200 rounded-full overflow-hidden shadow-inner'>
+                                    <div class='h-full transition-all duration-500' style='width: {$percent}%; background-color: " . ($state >= 9 ? '#10b981' : '#10b981') . ";'></div>
+                                </div>
+                                <span class='text-xs font-bold' style='color: " . ($state >= 9 ? '#059669' : '#374151') . "'>{$state}/9</span>
+                            </div>
+                        ";
+                    }),
                 Tables\Columns\TextColumn::make('total_visits')->label('Visits'),
                 Tables\Columns\TextColumn::make('enrolled_at')->date()->placeholder('—'),
             ])

@@ -11,7 +11,7 @@ class Customer extends Model
         'phone',
         'loyalty_count',
         'total_visits',
-        'free_shaves_used',
+        'free_haircuts_used',
         'enrolled_at',
     ];
 
@@ -22,19 +22,18 @@ class Customer extends Model
         ];
     }
 
-    // ── Loyalty helpers ───────────────────────────────────────────────────────
-
-    public function isEligibleForFreeShave(): bool
+    // ── Haircut Loyalty Program ────────────────────────────────────────────────
+    public function isEligibleForFreeHaircut(): bool
     {
         return $this->loyalty_count >= 9;
     }
 
-    public function loyaltyProgressLabel(): string
+    public function haircutProgressLabel(): string
     {
-        return $this->loyalty_count . ' / 9';
+        return $this->loyalty_count . ' / 9 Haircuts';
     }
 
-    public function loyaltyProgressPercent(): int
+    public function haircutProgressPercent(): int
     {
         return (int) min(100, round(($this->loyalty_count / 9) * 100));
     }

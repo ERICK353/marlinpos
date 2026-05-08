@@ -17,22 +17,19 @@ use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
-use App\Filament\Admin\Widgets\RevenueStatsWidget;
-use App\Filament\Admin\Widgets\StaffPerformanceWidget;
-use App\Filament\Admin\Widgets\LoyaltyStatsWidget;
 
 class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
         return $panel
-            ->default()
             ->id('admin')
             ->path('admin')
             ->login()
-            ->brandName('Malyn Executive Barber')
+            ->registration()
+            ->brandName('Landlord Admin')
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::Indigo,
             ])
             ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\\Filament\\Admin\\Resources')
             ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\\Filament\\Admin\\Pages')
@@ -42,10 +39,6 @@ class AdminPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Admin/Widgets'), for: 'App\\Filament\\Admin\\Widgets')
             ->widgets([
                 AccountWidget::class,
-                RevenueStatsWidget::class,
-                StaffPerformanceWidget::class,
-                LoyaltyStatsWidget::class,
-                \App\Filament\Admin\Widgets\PaymentMethodChartWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

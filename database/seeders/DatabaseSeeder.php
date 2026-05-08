@@ -8,9 +8,7 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $this->call([
-            RolesAndUsersSeeder::class,
-            ServicesSeeder::class,
-        ]);
+        // Central database seeders (if any) go here.
+        // Tenant seeders are now in TenantDatabaseSeeder.
     }
 }

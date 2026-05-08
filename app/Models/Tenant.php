@@ -10,4 +10,14 @@ use Stancl\Tenancy\Database\Concerns\HasDomains;
 class Tenant extends BaseTenant implements TenantWithDatabase
 {
     use HasDatabase, HasDomains;
+
+    protected static function booted()
+    {
+        static::created(function ($tenant) {
+            $centralDomain = config('tenancy.central_domains')[0] ?? 'localhost';
+            $tenant->domains()->create([
+                'domain' => $tenant->id . '.' . $centralDomain,
+            ]);
+        });
+    }
 }
