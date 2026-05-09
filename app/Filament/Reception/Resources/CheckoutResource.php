@@ -53,8 +53,8 @@ class CheckoutResource extends Resource
                                 $set('enroll_new', false);
 
                                 // Recalculate without discount
-                                $servicesData = $get('services') ?? [];
-                                $serviceIds = array_column($servicesData, 'service_id');
+                                $itemsData = $get('items') ?? [];
+                                $serviceIds = array_column($itemsData, 'service_id');
                                 if (! empty($serviceIds)) {
                                     $subtotal = Service::whereIn('id', $serviceIds)->sum('price');
                                     $set('subtotal', $subtotal);
@@ -95,8 +95,8 @@ class CheckoutResource extends Resource
                                 $set('_loyalty_eligible', $eligible);
 
                                 // Recalculate totals
-                                $servicesData = $get('services') ?? [];
-                                $serviceIds = array_column($servicesData, 'service_id');
+                                $itemsData = $get('items') ?? [];
+                                $serviceIds = array_column($itemsData, 'service_id');
                                 if (! empty($serviceIds)) {
                                     $services = Service::whereIn('id', $serviceIds)->get();
                                     $subtotal = $services->sum('price');
@@ -177,7 +177,8 @@ class CheckoutResource extends Resource
             \Filament\Schemas\Components\Section::make('Services')
                 ->icon('heroicon-o-scissors')
                 ->components([
-                    Forms\Components\Repeater::make('services')
+                    Forms\Components\Repeater::make('items')
+                        ->relationship('items')
                         ->label('Services Performed')
                         ->schema([
                             Forms\Components\Select::make('service_id')
@@ -194,11 +195,17 @@ class CheckoutResource extends Resource
                                 ->options(fn () => User::where('role', 'staff')->pluck('name', 'id'))
                                 ->searchable()
                                 ->required(),
+
+                            Forms\Components\TextInput::make('unit_price')
+                                ->label('Price')
+                                ->numeric()
+                                ->prefix('KES')
+                                ->disabled()
+                                ->visible(fn ($record) => filled($record)),
                         ])
-                        ->columns(2)
+                        ->columns(fn ($record) => filled($record) ? 3 : 2)
                         ->defaultItems(1)
                         ->live()
-                        ->dehydrated(false)
                         ->afterStateUpdated(function (?array $state, Set $set, Get $get) {
                             $serviceIds = array_column($state ?? [], 'service_id');
                             if (empty($serviceIds)) {
@@ -299,8 +306,17 @@ class CheckoutResource extends Resource
                     ->bulleted(),
                 Tables\Columns\TextColumn::make('payment_method')
                     ->badge()
-                    ->formatStateUsing(fn ($s) => strtoupper($s))
-                    ->color(fn ($s) => $s === 'mpesa' ? 'success' : 'info'),
+                    ->formatStateUsing(fn ($state) => match($state) {
+                        'cash' => '💵 CASH',
+                        'mpesa' => '📱 M-PESA',
+                        default => strtoupper($state),
+                    })
+                    ->color(fn ($state) => match($state) {
+                        'mpesa' => 'success',
+                        'cash' => 'info',
+                        default => 'gray',
+                    })
+                    ->description(fn ($record) => $record->payment_method === 'mpesa' ? $record->mpesa_reference : null),
                 Tables\Columns\TextColumn::make('total')->money('KES'),
                 Tables\Columns\IconColumn::make('is_free_haircut')->boolean()->label('Free Haircut'),
                 Tables\Columns\TextColumn::make('served_at')->dateTime()->since(),

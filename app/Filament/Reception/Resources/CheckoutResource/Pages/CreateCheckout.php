@@ -44,30 +44,7 @@ class CreateCheckout extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $raw          = $this->form->getRawState();
-        $servicesData = $raw['services'] ?? [];
         $transaction  = $this->record;
-
-        // Create line items
-        foreach ($servicesData as $item) {
-            $service = Service::find($item['service_id']);
-            $staff   = User::find($item['staff_user_id']);
-            if (! $service || ! $staff) continue;
-
-            $commissionRate = $staff->commission_rate ?? 40;
-            $commissionAmount = ($service->price * $commissionRate) / 100;
-
-            TransactionItem::create([
-                'transaction_id'    => $transaction->id,
-                'service_id'        => $service->id,
-                'staff_user_id'     => $staff->id,
-                'quantity'          => 1,
-                'unit_price'        => $service->price,
-                'line_total'        => $service->price,
-                'commission_rate'   => $commissionRate,
-                'commission_amount' => $commissionAmount,
-            ]);
-        }
 
         // Apply loyalty: increment counter or grant free shave
         if ($transaction->customer_id) {

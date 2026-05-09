@@ -3,16 +3,18 @@
 use App\Http\Controllers\ReceiptController;
 use Illuminate\Support\Facades\Route;
 
+// Universal Receipt Route (Works on both central and tenant domains)
+Route::get('/receipt/{transaction}', [ReceiptController::class, 'show'])
+    ->name('receipt.show')
+    ->middleware(['web', 'auth', \Stancl\Tenancy\Middleware\InitializeTenancyByDomain::class]);
+
 foreach (config('tenancy.central_domains') as $domain) {
     Route::domain($domain)->group(function () {
         Route::get('/', function () {
             return view('welcome');
         });
 
-        // Receipt PDF — accessible to any authenticated user (reception or admin)
-        Route::get('/receipt/{transaction}', [ReceiptController::class, 'show'])
-            ->name('receipt.show')
-            ->middleware('auth');
+
 
         // PWA Routes
         Route::get('/manifest.json', function () {

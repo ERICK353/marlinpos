@@ -42,4 +42,31 @@ class TransactionItem extends Model
     {
         return $this->belongsTo(User::class, 'staff_user_id');
     }
+
+    protected static function booted()
+    {
+        static::creating(function ($item) {
+            // Auto-populate price if missing
+            if ($item->service_id && (!$item->unit_price || !$item->line_total)) {
+                $service = Service::find($item->service_id);
+                if ($service) {
+                    $item->unit_price = $service->price;
+                    $item->line_total = $service->price * ($item->quantity ?? 1);
+                }
+            }
+
+            // Auto-populate commission rate if missing
+            if ($item->staff_user_id && !$item->commission_rate) {
+                $staff = User::find($item->staff_user_id);
+                if ($staff) {
+                    $item->commission_rate = $staff->commission_rate ?? 40;
+                }
+            }
+
+            // Calculate commission amount
+            if ($item->unit_price && $item->commission_rate && !$item->commission_amount) {
+                $item->commission_amount = ($item->unit_price * $item->commission_rate) / 100;
+            }
+        });
+    }
 }
