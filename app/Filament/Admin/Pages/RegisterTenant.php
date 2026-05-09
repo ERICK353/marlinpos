@@ -36,7 +36,7 @@ class RegisterTenant extends Page
                             ->alpha()
                             ->placeholder('e.g. MalynExecutive')
                             ->helperText(fn () => $this->shop_name
-                                ? 'Domain will be: ' . str($this->shop_name)->slug()->toString() . '.localhost'
+                                ? 'Domain will be: ' . str($this->shop_name)->slug()->toString() . '.' . (config('tenancy.central_domains')[0] ?? 'localhost')
                                 : 'Enter a name (letters only, no spaces or special characters).'
                             )
                             ->live(),
