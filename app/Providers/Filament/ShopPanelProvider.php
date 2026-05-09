@@ -42,11 +42,13 @@ class ShopPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Shop/Widgets'), for: 'App\\Filament\\Shop\\Widgets')
             ->widgets([
-                AccountWidget::class,
                 RevenueStatsWidget::class,
                 StaffPerformanceWidget::class,
                 LoyaltyStatsWidget::class,
                 \App\Filament\Shop\Widgets\PaymentMethodChartWidget::class,
+                \App\Filament\Shop\Widgets\ServiceDistributionChart::class,
+                \App\Filament\Shop\Widgets\ShopRevenueChart::class,
+                \App\Filament\Shop\Widgets\ShopExpensesChart::class,
             ])
             ->middleware([
                 EncryptCookies::class,

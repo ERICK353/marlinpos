@@ -10,7 +10,7 @@ use Illuminate\Support\Carbon;
 class PaymentMethodChartWidget extends ChartWidget
 {
     protected ?string $heading = 'Payment Methods (This Month)';
-    protected static ?int $sort = 3;
+    protected static ?int $sort = 5;
 
     protected function getData(): array
     {
@@ -37,6 +37,8 @@ class PaymentMethodChartWidget extends ChartWidget
                     'label' => 'Payment Methods',
                     'data' => [(float)$cashTotal, (float)$mpesaTotal],
                     'backgroundColor' => ['#fbbf24', '#22c55e'],
+                    'hoverOffset'     => 4,
+                    'borderRadius'    => 6,
                 ],
             ],
             'labels' => ['Cash', 'M-Pesa'],
@@ -45,6 +47,32 @@ class PaymentMethodChartWidget extends ChartWidget
 
     protected function getType(): string
     {
-        return 'pie';
+        return 'doughnut';
+    }
+
+    protected function getOptions(): array
+    {
+        return [
+            'animation' => [
+                'duration' => 1000,
+            ],
+            'cutout'  => '70%',
+            'plugins' => [
+                'legend' => [
+                    'position' => 'bottom',
+                    'labels'   => [
+                        'usePointStyle' => true,
+                        'pointStyle'    => 'circle',
+                    ],
+                ],
+            ],
+            'responsive' => true,
+            'elements'   => [
+                'arc' => [
+                    'borderRadius' => 10,
+                    'borderWidth'  => 0,
+                ],
+            ],
+        ];
     }
 }

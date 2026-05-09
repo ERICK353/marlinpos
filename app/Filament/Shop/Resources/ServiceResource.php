@@ -31,11 +31,14 @@ class ServiceResource extends Resource
                 Forms\Components\TextInput::make('sort_order')
                     ->numeric()->default(0)->label('Sort Order'),
                 Forms\Components\Toggle::make('is_active')
-                    ->label('Active')->default(true)->inline(false),
+                    ->label('Service Active')
+                    ->default(true)
+                    ->inline(false),
                 Forms\Components\Toggle::make('is_haircut')
-                    ->label('Is Haircut?')
-                    ->helperText('Enable this to count this service towards the loyalty program.')
-                    ->default(false)->inline(false),
+                    ->label('Loyalty Program (Haircut)')
+                    ->helperText('Enable this to count this service towards the 9+1 loyalty program.')
+                    ->default(false)
+                    ->inline(false),
             ])->columns(2),
         ]);
     }

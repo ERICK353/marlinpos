@@ -31,7 +31,11 @@ class ReceptionPanelProvider extends PanelProvider
                 'primary' => Color::Emerald,
             ])
             ->widgets([
-                AccountWidget::class,
+                \App\Filament\Reception\Widgets\ReceptionStatsWidget::class,
+                \App\Filament\Reception\Widgets\ShopRevenueChart::class,
+                \App\Filament\Reception\Widgets\PaymentMethodChart::class,
+                \App\Filament\Reception\Widgets\ServiceDistributionChart::class,
+                \App\Filament\Reception\Widgets\CustomerTypeChart::class,
             ])
             ->discoverResources(in: app_path('Filament/Reception/Resources'), for: 'App\\Filament\\Reception\\Resources')
             ->discoverPages(in: app_path('Filament/Reception/Pages'), for: 'App\\Filament\\Reception\\Pages')

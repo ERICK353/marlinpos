@@ -10,8 +10,7 @@ class PaymentMethodChart extends ChartWidget
 {
     protected ?string $heading = 'Payment Methods';
     protected ?string $maxHeight = '300px';
-    protected int | string | array $columnSpan = 'full';
-    protected static ?int $sort = 3;
+    protected static ?int $sort = 4;
 
     protected function getData(): array
     {
@@ -29,6 +28,8 @@ class PaymentMethodChart extends ChartWidget
                         '#3b82f6', // blue (cash)
                         '#10b981', // emerald (mpesa)
                     ],
+                    'hoverOffset'     => 4,
+                    'borderRadius'    => 6,
                 ],
             ],
             'labels' => $data->pluck('payment_method')->map(fn ($m) => strtoupper($m))->toArray(),
@@ -38,5 +39,31 @@ class PaymentMethodChart extends ChartWidget
     protected function getType(): string
     {
         return 'doughnut';
+    }
+
+    protected function getOptions(): array
+    {
+        return [
+            'animation' => [
+                'duration' => 1000,
+            ],
+            'cutout'  => '70%',
+            'plugins' => [
+                'legend' => [
+                    'position' => 'bottom',
+                    'labels'   => [
+                        'usePointStyle' => true,
+                        'pointStyle'    => 'circle',
+                    ],
+                ],
+            ],
+            'responsive' => true,
+            'elements'   => [
+                'arc' => [
+                    'borderRadius' => 10,
+                    'borderWidth'  => 0,
+                ],
+            ],
+        ];
     }
 }

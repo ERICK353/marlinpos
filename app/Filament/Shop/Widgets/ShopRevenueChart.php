@@ -1,41 +1,34 @@
 <?php
 
-namespace App\Filament\Staff\Widgets;
+namespace App\Filament\Shop\Widgets;
 
-use App\Models\TransactionItem;
+use App\Models\Transaction;
 use Filament\Widgets\ChartWidget;
 use Flowframe\Trend\Trend;
 use Flowframe\Trend\TrendValue;
 use Illuminate\Support\Carbon;
 
-class StaffRevenueChart extends ChartWidget
+class ShopRevenueChart extends ChartWidget
 {
-    protected ?string $heading = 'Revenue Trend (Last 7 Days)';
+    protected ?string $heading = 'Monthly Revenue (Current Year)';
     protected ?string $maxHeight = '300px';
+    protected static ?int $sort = 3;
 
     protected function getData(): array
     {
-        $userId = auth()->id();
-
-        // Use Trend package to aggregate line_total from transaction_items
-        // joined with transactions to get the served_at date.
-        $data = Trend::query(
-            TransactionItem::query()
-                ->join('transactions', 'transaction_items.transaction_id', '=', 'transactions.id')
-                ->where('transaction_items.staff_user_id', $userId)
-        )
-            ->dateColumn('transactions.served_at')
+        $data = Trend::model(Transaction::class)
+            ->dateColumn('served_at')
             ->between(
-                start: Carbon::today()->subDays(6),
-                end: Carbon::today(),
+                start: Carbon::now()->startOfYear(),
+                end: Carbon::now()->endOfYear(),
             )
-            ->perDay()
-            ->sum('transaction_items.line_total');
+            ->perMonth()
+            ->sum('total');
 
         return [
             'datasets' => [
                 [
-                    'label' => 'Revenue (KES)',
+                    'label' => 'Total Revenue (KES)',
                     'data' => $data->map(fn (TrendValue $value) => $value->aggregate)->toArray(),
                     'backgroundColor' => 'rgba(34, 197, 94, 0.8)',
                     'borderColor' => 'rgb(34, 197, 94)',
@@ -44,7 +37,7 @@ class StaffRevenueChart extends ChartWidget
                     'borderSkipped' => false,
                 ],
             ],
-            'labels' => $data->map(fn (TrendValue $value) => Carbon::parse($value->date)->format('D, M j'))->toArray(),
+            'labels' => $data->map(fn (TrendValue $value) => Carbon::parse($value->date)->format('M'))->toArray(),
         ];
     }
 

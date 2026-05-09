@@ -11,7 +11,7 @@ use Illuminate\Support\Carbon;
 
 class StaffPerformanceWidget extends BaseWidget
 {
-    protected static ?int $sort = 2;
+    protected static ?int $sort = 7;
     protected static ?string $heading = 'Staff Performance — This Month';
     protected int | string | array $columnSpan = 'full';
 
