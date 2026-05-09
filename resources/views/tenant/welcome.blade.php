@@ -10,6 +10,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     
+    <!-- PWA Setup -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#991b1b">
+    <link rel="apple-touch-icon" href="/images/icon.svg">
+    
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -23,12 +28,15 @@
                         body: ['Inter', 'sans-serif'],
                     },
                     colors: {
-                        primary: '#0ea5e9',
-                        secondary: '#8b5cf6',
+                        primary: '#991b1b',
+                        secondary: '#7f1d1d',
                     },
                     animation: {
                         'blob': 'blob 7s infinite',
                         'fade-in-up': 'fadeInUp 0.8s ease-out forwards',
+                        'stagger-1': 'fadeInUp 0.8s ease-out 0.1s forwards',
+                        'stagger-2': 'fadeInUp 0.8s ease-out 0.2s forwards',
+                        'stagger-3': 'fadeInUp 0.8s ease-out 0.3s forwards',
                     },
                     keyframes: {
                         blob: {
@@ -49,8 +57,16 @@
 
     <style>
         body {
-            background-color: #fafafa;
+            background-color: #fffafa;
             color: #0f172a;
+        }
+
+        /* Glassmorphism utility */
+        .glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(153, 27, 27, 0.1);
         }
 
         .glass-panel {
@@ -58,99 +74,105 @@
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.5);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 25px 50px -12px rgba(153, 27, 27, 0.05);
         }
 
-        .action-card {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        .portal-card {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
         }
 
-        .action-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        .portal-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 30px 60px -12px rgba(153, 27, 27, 0.15);
+            border-color: rgba(153, 27, 27, 0.3);
+        }
+
+        .portal-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(153, 27, 27, 0.05) 0%, rgba(127, 29, 29, 0.05) 100%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .portal-card:hover::after {
+            opacity: 1;
         }
     </style>
 </head>
-<body class="antialiased min-h-screen flex items-center justify-center relative overflow-hidden selection:bg-primary selection:text-white">
+<body class="antialiased min-h-screen relative overflow-x-hidden flex flex-col selection:bg-primary selection:text-white">
     
     <!-- Animated Background Blobs -->
-    <div class="absolute top-0 -left-4 w-72 h-72 bg-sky-300 rounded-full mix-blend-multiply filter blur-2xl opacity-40 animate-blob"></div>
-    <div class="absolute top-0 -right-4 w-72 h-72 bg-violet-300 rounded-full mix-blend-multiply filter blur-2xl opacity-40 animate-blob animation-delay-2000"></div>
-    <div class="absolute -bottom-8 left-20 w-72 h-72 bg-emerald-300 rounded-full mix-blend-multiply filter blur-2xl opacity-40 animate-blob animation-delay-4000"></div>
+    <div class="absolute top-0 -left-4 w-96 h-96 bg-red-100 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
+    <div class="absolute top-0 -right-4 w-96 h-96 bg-rose-100 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
+    <div class="absolute -bottom-8 left-20 w-96 h-96 bg-orange-50 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
 
-    <div class="max-w-4xl w-full px-6 relative z-10 animate-fade-in-up">
-        
-        <!-- Header -->
-        <div class="text-center mb-12">
-            <div class="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-sky-400 to-violet-500 text-white shadow-xl shadow-sky-500/20 mb-6">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
+    <!-- Minimal Navigation -->
+    <nav class="glass fixed w-full z-50 transition-all duration-300">
+        <div class="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4 flex flex-wrap justify-between items-center gap-y-3">
+            <div class="flex items-center gap-3">
+                <span class="text-lg md:text-xl font-bold tracking-tight text-slate-900">{{ Str::title($tenant->id) }}</span>
             </div>
-            <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4 text-slate-900">
-                Welcome to <br/> <span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-500 to-violet-500">{{ Str::title($tenant->id) }}</span>
-            </h1>
-            <p class="text-lg text-slate-500 font-body max-w-xl mx-auto">
-                Select your designated portal below to securely access the daily operations, reporting, and staff management dashboards.
-            </p>
-        </div>
-
-        <!-- Portals Grid -->
-        <div class="grid md:grid-cols-3 gap-6">
             
-            <!-- Shop Dashboard (Admin) -->
-            <a href="/shop" class="action-card glass-panel rounded-3xl p-8 flex flex-col items-center text-center group border-t-4 border-t-violet-500">
-                <div class="w-14 h-14 bg-violet-100 rounded-full flex items-center justify-center text-violet-600 mb-6 group-hover:scale-110 transition-transform">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                </div>
-                <h3 class="text-xl font-bold text-slate-900 mb-2">Shop Owner</h3>
-                <p class="text-sm text-slate-500 font-body mb-6 flex-grow">Complete oversight of analytics, staff commissions, and business settings.</p>
-                <div class="inline-flex items-center justify-center w-full py-3 px-4 rounded-xl bg-slate-900 text-white font-medium text-sm group-hover:bg-violet-600 transition-colors">
-                    Access Portal &rarr;
-                </div>
-            </a>
+            <!-- Mobile Menu Items (Left aligned on small screens) -->
+            <div class="flex items-center gap-4 md:gap-6 w-full sm:w-auto order-last sm:order-none justify-start sm:justify-end overflow-x-auto pb-1 sm:pb-0">
+                <a href="/shop" class="text-sm font-medium text-slate-600 hover:text-primary transition-colors whitespace-nowrap">Admin</a>
+                <a href="/reception" class="text-sm font-medium text-slate-600 hover:text-primary transition-colors whitespace-nowrap">Reception</a>
+            </div>
+        </div>
+    </nav>
 
-            <!-- Reception Dashboard -->
-            <a href="/reception" class="action-card glass-panel rounded-3xl p-8 flex flex-col items-center text-center group border-t-4 border-t-sky-500">
-                <div class="w-14 h-14 bg-sky-100 rounded-full flex items-center justify-center text-sky-600 mb-6 group-hover:scale-110 transition-transform">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
+    <main class="relative z-10 flex-grow flex flex-col items-center justify-center px-4 md:px-6 pt-24 md:pt-32 pb-12 md:pb-20">
+        <div class="max-w-5xl w-full">
+            
+            <!-- Header Section -->
+            <div class="text-center animate-fade-in-up">
+                <h1 class="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight mb-6 text-slate-900">
+                    Welcome to <br class="hidden sm:block"/> <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">{{ Str::title($tenant->id) }}</span>
+                </h1>
+                <p class="text-base md:text-lg text-slate-500 font-body max-w-2xl mx-auto leading-relaxed px-2 mb-10">
+                    Streamline your operations, manage walk-ins, and track staff performance from one central hub. Select the portal you want to visit.
+                </p>
+                <div class="flex flex-col sm:flex-row flex-wrap justify-center items-center gap-4">
+                    <a href="/reception" class="px-8 py-4 w-full sm:w-auto rounded-xl bg-secondary hover:bg-secondary/90 text-white font-semibold text-lg transition-all duration-300 shadow-lg shadow-secondary/30 flex items-center justify-center gap-2 transform hover:-translate-y-1">
+                        Open Reception
+                    </a>
+                    <a href="/staff" class="px-8 py-4 w-full sm:w-auto rounded-xl bg-primary hover:bg-primary/90 text-white font-semibold text-lg transition-all duration-300 shadow-lg shadow-primary/30 flex items-center justify-center gap-2 transform hover:-translate-y-1">
+                        Staff Portal
+                    </a>
+                    <a href="/shop" class="px-8 py-4 w-full sm:w-auto rounded-xl glass hover:bg-primary/5 text-slate-700 font-semibold text-lg transition-all duration-300 flex items-center justify-center gap-2">
+                        Admin Dashboard
+                    </a>
                 </div>
-                <h3 class="text-xl font-bold text-slate-900 mb-2">Reception</h3>
-                <p class="text-sm text-slate-500 font-body mb-6 flex-grow">Manage walk-ins, process checkouts, and print customer receipts.</p>
-                <div class="inline-flex items-center justify-center w-full py-3 px-4 rounded-xl bg-slate-900 text-white font-medium text-sm group-hover:bg-sky-600 transition-colors">
-                    Access Portal &rarr;
-                </div>
-            </a>
-
-            <!-- Staff Dashboard -->
-            <a href="/staff" class="action-card glass-panel rounded-3xl p-8 flex flex-col items-center text-center group border-t-4 border-t-emerald-500">
-                <div class="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 mb-6 group-hover:scale-110 transition-transform">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
-                    </svg>
-                </div>
-                <h3 class="text-xl font-bold text-slate-900 mb-2">Staff View</h3>
-                <p class="text-sm text-slate-500 font-body mb-6 flex-grow">Check daily earnings, active commission rates, and assigned tasks.</p>
-                <div class="inline-flex items-center justify-center w-full py-3 px-4 rounded-xl bg-slate-900 text-white font-medium text-sm group-hover:bg-emerald-600 transition-colors">
-                    Access Portal &rarr;
-                </div>
-            </a>
+            </div>
 
         </div>
+    </main>
 
-        <div class="mt-12 text-center">
-            <span class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 text-slate-500 text-sm font-medium border border-slate-200">
-                <span class="relative flex h-2.5 w-2.5">
-                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                </span>
-                Secure Tenant Domain
-            </span>
+    <!-- Footer -->
+    <footer class="relative z-20 py-8 px-6">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-medium text-slate-400">
+            <p>&copy; {{ date('Y') }} {{ Str::title($tenant->id) }}. Powered by Malyn POS.</p>
+            <div class="flex items-center gap-4">
+                <a href="#" class="hover:text-primary transition-colors">Privacy Policy</a>
+                <a href="#" class="hover:text-primary transition-colors">Support Center</a>
+            </div>
         </div>
-    </div>
+    </footer>
+
+    <!-- PWA Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js');
+            });
+        }
+    </script>
 </body>
 </html>

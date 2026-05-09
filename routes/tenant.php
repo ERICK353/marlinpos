@@ -28,4 +28,29 @@ Route::middleware([
             'tenant' => tenant()
         ]);
     });
+
+    // Tenant PWA Routes
+    Route::get('/manifest.json', function () {
+        $shopName = \Illuminate\Support\Str::title(tenant('id'));
+        return response()->json([
+            'name' => $shopName . ' Management',
+            'short_name' => $shopName,
+            'start_url' => '/shop',
+            'display' => 'standalone',
+            'theme_color' => '#991b1b',
+            'background_color' => '#fffafa',
+            'icons' => [
+                [
+                    'src' => '/images/icon.svg',
+                    'sizes' => 'any',
+                    'type' => 'image/svg+xml',
+                    'purpose' => 'any maskable'
+                ]
+            ]
+        ]);
+    });
+
+    Route::get('/offline', function () {
+        return view('offline');
+    });
 });

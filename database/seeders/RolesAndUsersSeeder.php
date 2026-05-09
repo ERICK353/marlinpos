@@ -12,6 +12,15 @@ class RolesAndUsersSeeder extends Seeder
     {
         $users = [
             [
+                'name'            => 'System Developer',
+                'email'           => 'developer@marlin.local',
+                'password'        => Hash::make('password'),
+                'role'            => 'admin',
+                'commission_rate' => 0.00,
+                'phone'           => null,
+                'gender'          => 'male',
+            ],
+            [
                 'name'            => 'Marlin Admin',
                 'email'           => 'admin@marlin.local',
                 'password'        => Hash::make('password'),

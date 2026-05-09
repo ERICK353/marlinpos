@@ -13,7 +13,10 @@ class ListTenants extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            Actions\Action::make('register')
+                ->label('Register New Shop')
+                ->icon('heroicon-o-plus-circle')
+                ->url(fn (): string => \App\Filament\Admin\Pages\RegisterTenant::getUrl()),
         ];
     }
 }

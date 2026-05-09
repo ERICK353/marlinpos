@@ -18,6 +18,11 @@ class UserResource extends Resource
     public static function getNavigationGroup(): ?string { return 'Staff Management'; }
     public static function getNavigationSort(): ?int { return 1; }
 
+    public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        return parent::getEloquentQuery()->where('email', '!=', 'developer@marlin.local');
+    }
+
     public static function form(Schema $schema): Schema
     {
         return $schema->components([

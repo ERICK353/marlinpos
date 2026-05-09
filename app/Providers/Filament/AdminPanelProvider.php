@@ -29,7 +29,7 @@ class AdminPanelProvider extends PanelProvider
             ->registration()
             ->brandName('Landlord Admin')
             ->colors([
-                'primary' => Color::Indigo,
+                'primary' => Color::Rose,
             ])
             ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\\Filament\\Admin\\Resources')
             ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\\Filament\\Admin\\Pages')
