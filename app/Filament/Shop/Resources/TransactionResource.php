@@ -34,6 +34,14 @@ class TransactionResource extends Resource
                     ->badge()
                     ->color(fn ($state) => $state === 'mpesa' ? 'success' : 'info')
                     ->formatStateUsing(fn ($state) => strtoupper($state)),
+                Tables\Columns\TextColumn::make('subtotal')
+                    ->label('Gross Value')
+                    ->money('KES')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('discount')
+                    ->label('Loyalty Discount')
+                    ->money('KES')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('total')->money('KES')->sortable(),
                 Tables\Columns\IconColumn::make('is_free_haircut')->boolean()->label('Free'),
                 Tables\Columns\TextColumn::make('served_at')->dateTime()->sortable(),

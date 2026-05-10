@@ -35,7 +35,6 @@ class StaffTransactionResource extends Resource
                         if (! $record->customer_id) return 'Walk-in';
                         return $state ?? 'Unnamed';
                     }),
-                Tables\Columns\TextColumn::make('customer.phone')->label('Phone')->placeholder('—'),
                 Tables\Columns\TextColumn::make('items_summary')
                     ->label('Services')
                     ->getStateUsing(fn (Transaction $record) =>

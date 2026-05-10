@@ -76,8 +76,8 @@ class CheckoutResource extends Resource
                                 ->mapWithKeys(fn ($c) => [$c->id => ($c->name ?? 'Unnamed') . " ({$c->phone})"])
                         )
                         ->getOptionLabelUsing(fn ($value) => Customer::find($value) ? (Customer::find($value)->name ?? 'Unnamed') . ' (' . Customer::find($value)->phone . ')' : null)
-                        ->required(fn (Get $get) => ! $get('is_walk_in'))
-                        ->visible(fn (Get $get) => ! $get('is_walk_in'))
+                        ->required(fn (Get $get) => ! $get('is_walk_in') && ! $get('enroll_new'))
+                        ->visible(fn (Get $get) => ! $get('is_walk_in') && ! $get('enroll_new'))
                         ->live()
                         ->afterStateUpdated(function ($state, Set $set, Get $get) {
                             if (! $state) {
@@ -360,8 +360,16 @@ class CheckoutResource extends Resource
                         default => 'gray',
                     })
                     ->description(fn ($record) => $record->payment_method === 'mpesa' ? $record->mpesa_reference : null),
+                Tables\Columns\TextColumn::make('subtotal')
+                    ->label('Gross')
+                    ->money('KES')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('discount')
+                    ->label('Discount')
+                    ->money('KES')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('total')->money('KES'),
-                Tables\Columns\IconColumn::make('is_free_haircut')->boolean()->label('Free Haircut'),
+                Tables\Columns\IconColumn::make('is_free_haircut')->boolean()->label('Free'),
                 Tables\Columns\TextColumn::make('served_at')->dateTime()->since(),
             ])
             ->actions([

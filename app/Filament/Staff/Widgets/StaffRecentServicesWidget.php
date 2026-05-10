@@ -29,7 +29,7 @@ class StaffRecentServicesWidget extends BaseWidget
                     ->sortable(),
                 Tables\Columns\TextColumn::make('service.name')
                     ->label('Service'),
-                Tables\Columns\TextColumn::make('transaction.customer.phone')
+                Tables\Columns\TextColumn::make('transaction.customer.name')
                     ->label('Customer')
                     ->placeholder('Walk-in'),
                 Tables\Columns\TextColumn::make('line_total')
