@@ -46,12 +46,13 @@ class TransactionItem extends Model
     protected static function booted()
     {
         static::creating(function ($item) {
-            // Auto-populate price if missing
-            if ($item->service_id && (!$item->unit_price || !$item->line_total)) {
+            // Auto-populate price if missing (null, empty string, or 0)
+            if ($item->service_id && (empty($item->unit_price) || empty($item->line_total))) {
                 $service = Service::find($item->service_id);
                 if ($service) {
-                    $item->unit_price = $service->price;
-                    $item->line_total = $service->price * ($item->quantity ?? 1);
+                    // Only fill if not already set (to avoid overwriting custom prices like the 250 for free shaves)
+                    if (empty($item->unit_price)) $item->unit_price = $service->price;
+                    if (empty($item->line_total)) $item->line_total = $service->price * ($item->quantity ?? 1);
                 }
             }
 

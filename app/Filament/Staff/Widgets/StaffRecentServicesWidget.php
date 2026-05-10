@@ -38,7 +38,16 @@ class StaffRecentServicesWidget extends BaseWidget
                 Tables\Columns\TextColumn::make('transaction.payment_method')
                     ->label('Method')
                     ->badge()
-                    ->formatStateUsing(fn ($s) => strtoupper($s)),
+                    ->formatStateUsing(fn ($state) => match($state) {
+                        'cash' => '💵 CASH',
+                        'mpesa' => '📱 M-PESA',
+                        default => strtoupper($state ?? '—'),
+                    })
+                    ->color(fn ($state) => match($state) {
+                        'mpesa' => 'success',
+                        'cash' => 'info',
+                        default => 'gray',
+                    }),
             ])
             ->paginated(false);
     }

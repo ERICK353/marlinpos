@@ -35,7 +35,7 @@ class TransactionResource extends Resource
                     ->color(fn ($state) => $state === 'mpesa' ? 'success' : 'info')
                     ->formatStateUsing(fn ($state) => strtoupper($state)),
                 Tables\Columns\TextColumn::make('total')->money('KES')->sortable(),
-                Tables\Columns\IconColumn::make('is_free_shave')->boolean()->label('Free'),
+                Tables\Columns\IconColumn::make('is_free_haircut')->boolean()->label('Free'),
                 Tables\Columns\TextColumn::make('served_at')->dateTime()->sortable(),
             ])
             ->filters([
@@ -46,7 +46,7 @@ class TransactionResource extends Resource
                     ->label('Staff Member')
                     ->searchable()
                     ->preload(),
-                Tables\Filters\TernaryFilter::make('is_free_shave')->label('Free Shave'),
+                Tables\Filters\TernaryFilter::make('is_free_haircut')->label('Free Haircut'),
             ])
             ->defaultSort('served_at', 'desc')
             ->actions([\Filament\Actions\ViewAction::make()]);

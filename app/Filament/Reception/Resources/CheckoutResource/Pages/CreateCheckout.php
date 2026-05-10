@@ -37,7 +37,34 @@ class CreateCheckout extends CreateRecord
         $data['served_at']         = now();
 
         // Derive free-haircut flag from loyalty state
-        $data['is_free_haircut'] = (bool) ($raw['_loyalty_eligible'] ?? false);
+        $isFree = (bool) ($raw['_loyalty_eligible'] ?? false);
+        $data['is_free_haircut'] = $isFree;
+
+        // If it's a free haircut, adjust the price of the most expensive haircut item to 250
+        // so the staff gets credited 250 instead of 0 or the full price.
+        if ($isFree && ! empty($data['items'])) {
+            $maxPrice = 0;
+            $maxIndex = -1;
+            
+            // We need to fetch service prices to identify the most expensive haircut
+            $serviceIds = array_column($data['items'], 'service_id');
+            $services = Service::whereIn('id', $serviceIds)->get()->keyBy('id');
+
+            foreach ($data['items'] as $index => $item) {
+                $service = $services[$item['service_id']] ?? null;
+                if ($service && $service->is_haircut) {
+                    if ($service->price > $maxPrice) {
+                        $maxPrice = $service->price;
+                        $maxIndex = $index;
+                    }
+                }
+            }
+
+            if ($maxIndex !== -1) {
+                $data['items'][$maxIndex]['unit_price'] = 250;
+                $data['items'][$maxIndex]['line_total'] = 250;
+            }
+        }
 
         return $data;
     }

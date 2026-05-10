@@ -8,6 +8,7 @@ use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Resources\Resource;
+use Filament\Infolists;
 
 class StaffTransactionResource extends Resource
 {
@@ -38,18 +39,58 @@ class StaffTransactionResource extends Resource
                 Tables\Columns\TextColumn::make('items_summary')
                     ->label('Services')
                     ->getStateUsing(fn (Transaction $record) =>
-                        $record->items->map(fn ($i) => $i->service->name)->join(', ')
+                        $record->items->map(fn ($i) => $i->service->name . ' (KES ' . number_format($i->line_total, 0) . ')')->join(', ')
                     ),
-                Tables\Columns\TextColumn::make('total')->money('KES'),
+                Tables\Columns\TextColumn::make('subtotal')->label('Value')->money('KES'),
                 Tables\Columns\IconColumn::make('is_free_haircut')->boolean()->label('Free'),
                 Tables\Columns\TextColumn::make('payment_method')
                     ->badge()
-                    ->formatStateUsing(fn ($s) => strtoupper($s)),
+                    ->formatStateUsing(fn ($state) => match($state) {
+                        'cash' => '💵 CASH',
+                        'mpesa' => '📱 M-PESA',
+                        default => strtoupper($state ?? '—'),
+                    })
+                    ->color(fn ($state) => match($state) {
+                        'mpesa' => 'success',
+                        'cash' => 'info',
+                        default => 'gray',
+                    }),
                 Tables\Columns\TextColumn::make('served_at')->dateTime()->sortable(),
             ])
             ->defaultSort('served_at', 'desc')
             ->actions([\Filament\Actions\ViewAction::make()])
             ->bulkActions([]);
+    }
+
+    public static function infolist(Schema $schema): Schema
+    {
+        return $schema->components([
+            \Filament\Schemas\Components\Section::make('Transaction Details')->components([
+                Infolists\Components\TextEntry::make('id')->label('TX #'),
+                Infolists\Components\TextEntry::make('served_at')->dateTime(),
+                Infolists\Components\TextEntry::make('customer.name')->label('Customer')->placeholder('Walk-in'),
+                Infolists\Components\TextEntry::make('payment_method')->badge()
+                    ->formatStateUsing(fn ($state) => match($state) {
+                        'cash' => '💵 CASH',
+                        'mpesa' => '📱 M-PESA',
+                        default => strtoupper($state ?? '—'),
+                    })
+                    ->color(fn ($state) => match($state) {
+                        'mpesa' => 'success',
+                        'cash' => 'info',
+                        default => 'gray',
+                    }),
+                Infolists\Components\TextEntry::make('is_free_haircut')->badge()->label('Loyalty Reward')
+                    ->state(fn ($record) => $record->is_free_haircut ? 'FREE HAIRCUT' : 'Standard')
+                    ->color(fn ($state) => $state === 'FREE HAIRCUT' ? 'warning' : 'gray'),
+                Infolists\Components\TextEntry::make('subtotal')->label('Gross Value')->money('KES'),
+                Infolists\Components\TextEntry::make('items.service.name')
+                    ->label('Services Performed')
+                    ->listWithLineBreaks()
+                    ->bulleted()
+                    ->columnSpanFull(),
+            ])->columns(3),
+        ]);
     }
 
     public static function getPages(): array

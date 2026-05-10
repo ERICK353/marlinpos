@@ -17,20 +17,24 @@ class ViewTransaction extends ViewRecord
             \Filament\Schemas\Components\Section::make('Transaction Details')->components([
                 Infolists\Components\TextEntry::make('id')->label('TX #'),
                 Infolists\Components\TextEntry::make('served_at')->dateTime(),
-                Infolists\Components\TextEntry::make('customer.phone')->label('Customer Phone')->placeholder('Walk-in'),
-                Infolists\Components\TextEntry::make('customer.name')->label('Customer Name')->placeholder('—'),
-                Infolists\Components\TextEntry::make('items.staff.name')->label('Staff'),
-                Infolists\Components\TextEntry::make('items.service.name')->label('Services'),
-                Infolists\Components\TextEntry::make('reception.name')->label('Reception'),
+                Infolists\Components\TextEntry::make('customer.name')->label('Customer')->placeholder('Walk-in'),
                 Infolists\Components\TextEntry::make('payment_method')->badge()
                     ->formatStateUsing(fn ($state) => strtoupper($state)),
                 Infolists\Components\TextEntry::make('mpesa_reference')->placeholder('—'),
-                Infolists\Components\IconEntry::make('is_free_shave')->boolean()->label('Free Shave'),
+                Infolists\Components\IconEntry::make('is_free_haircut')->boolean()->label('Free Haircut'),
+                
+                \Filament\Infolists\Components\TextEntry::make('_services_list')
+                    ->label('Services & Staff')
+                    ->getStateUsing(fn ($record) => $record->items->map(fn($i) => ($i->service->name ?? 'Service') . ' — handled by ' . ($i->staff->name ?? 'Unknown') . ' (KES ' . number_format($i->line_total) . ')'))
+                    ->listWithLineBreaks()
+                    ->bulleted()
+                    ->columnSpanFull(),
+
                 Infolists\Components\TextEntry::make('subtotal')->money('KES'),
-                Infolists\Components\TextEntry::make('discount')->money('KES'),
+                Infolists\Components\TextEntry::make('discount')->label('Loyalty Credit')->money('KES'),
                 Infolists\Components\TextEntry::make('total')->money('KES')->size('lg')->weight('bold'),
                 Infolists\Components\TextEntry::make('notes')->placeholder('—')->columnSpanFull(),
-            ])->columns(3),
+            ])->columns(2),
         ]);
     }
 }

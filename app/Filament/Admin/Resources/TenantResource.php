@@ -48,7 +48,7 @@ class TenantResource extends Resource
                 //
             ])
             ->actions([
-                \Filament\Actions\EditAction::make(),
+                // Edit removed as requested
             ])
             ->bulkActions([
                 \Filament\Actions\BulkActionGroup::make([
@@ -61,7 +61,8 @@ class TenantResource extends Resource
     {
         return [
             'index' => Pages\ListTenants::route('/'),
-            'edit' => Pages\EditTenant::route('/{record}/edit'),
         ];
     }
+
+    public static function canEdit($record): bool { return false; }
 }

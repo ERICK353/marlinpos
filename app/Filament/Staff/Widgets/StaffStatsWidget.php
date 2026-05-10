@@ -30,7 +30,7 @@ class StaffStatsWidget extends BaseWidget
             ->sum('line_total');
 
         $freeShaves = TransactionItem::where('staff_user_id', $userId)
-            ->whereHas('transaction', fn ($q) => $q->where('served_at', '>=', $monthStart)->where('is_free_shave', true))
+            ->whereHas('transaction', fn ($q) => $q->where('served_at', '>=', $monthStart)->where('is_free_haircut', true))
             ->count();
 
         return [
@@ -46,7 +46,7 @@ class StaffStatsWidget extends BaseWidget
                 ->description('Earnings for ' . Carbon::now()->format('F'))
                 ->descriptionIcon('heroicon-m-chart-bar'),
             Stat::make("Loyalty Impact", $freeShaves)
-                ->description('Free shaves given this month')
+                ->description('Free haircuts given this month')
                 ->descriptionIcon('heroicon-m-gift')
                 ->color('warning'),
         ];

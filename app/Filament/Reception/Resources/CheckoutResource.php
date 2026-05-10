@@ -98,17 +98,35 @@ class CheckoutResource extends Resource
                                 $itemsData = $get('items') ?? [];
                                 $serviceIds = array_column($itemsData, 'service_id');
                                 if (! empty($serviceIds)) {
-                                    $services = Service::whereIn('id', $serviceIds)->get();
-                                    $subtotal = $services->sum('price');
-                                    $haircutServices = $services->filter(fn($s) => $s->is_haircut);
-                                    
-                                    $discount = ($eligible && $haircutServices->isNotEmpty()) 
-                                        ? $haircutServices->max('price') 
-                                        : 0;
+                                    $services = Service::whereIn('id', $serviceIds)->get()->keyBy('id');
+                                    $subtotal = 0;
+                                    $maxHaircutPrice = 0;
+                                    $hasHaircut = false;
+
+                                    foreach ($itemsData as $item) {
+                                        if ($serviceId = $item['service_id'] ?? null) {
+                                            $service = $services[$serviceId] ?? null;
+                                            if ($service) {
+                                                $subtotal += $service->price;
+                                                if ($service->is_haircut) {
+                                                    $hasHaircut = true;
+                                                    if ($service->price > $maxHaircutPrice) {
+                                                        $maxHaircutPrice = $service->price;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    $discount = 0;
+                                    if ($eligible && $hasHaircut) {
+                                        $subtotal = $subtotal - $maxHaircutPrice + 250;
+                                        $discount = 250;
+                                    }
                                     
                                     $set('subtotal', $subtotal);
                                     $set('discount', $discount);
-                                    $set('total', $subtotal - $discount);
+                                    $set('total', max(0, $subtotal - $discount));
                                 }
                             }
                         }),
@@ -146,7 +164,8 @@ class CheckoutResource extends Resource
                                 return "⭐ {$name} — FREE HAIRCUT ELIGIBLE! (9/9 haircuts completed)";
                             }
                             return "{$name} — Haircut progress: {$count}/9 haircuts";
-                        }),
+                        })
+                        ->columnSpanFull(),
 
                     // New enrollment toggle
                     Forms\Components\Toggle::make('enroll_new')
@@ -171,7 +190,7 @@ class CheckoutResource extends Resource
                         ->dehydrated(false)
                         ->visible(fn (Get $get) => (bool) $get('enroll_new')),
                 ])
-                ->columns(3),
+                ->columns(2),
 
             // ── Services ──────────────────────────────────────────────────────
             \Filament\Schemas\Components\Section::make('Services')
@@ -201,7 +220,11 @@ class CheckoutResource extends Resource
                                 ->numeric()
                                 ->prefix('KES')
                                 ->disabled()
+                                ->dehydrated()
                                 ->visible(fn ($record) => filled($record)),
+
+                            Forms\Components\Hidden::make('line_total')
+                                ->dehydrated(),
                         ])
                         ->columns(fn ($record) => filled($record) ? 3 : 2)
                         ->defaultItems(1)
@@ -215,18 +238,39 @@ class CheckoutResource extends Resource
                                 return;
                             }
                             
-                            $services = Service::whereIn('id', $serviceIds)->get();
-                            $subtotal = $services->sum('price');
+                            $services = Service::whereIn('id', $serviceIds)->get()->keyBy('id');
+                            $subtotal = 0;
+                            $maxHaircutPrice = 0;
+                            $hasHaircut = false;
+
+                            foreach ($state as $item) {
+                                if ($serviceId = $item['service_id'] ?? null) {
+                                    $service = $services[$serviceId] ?? null;
+                                    if ($service) {
+                                        $subtotal += $service->price;
+                                        if ($service->is_haircut) {
+                                            $hasHaircut = true;
+                                            if ($service->price > $maxHaircutPrice) {
+                                                $maxHaircutPrice = $service->price;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
                             $eligible = (bool) $get('_loyalty_eligible');
-                            $haircutServices = $services->filter(fn($s) => $s->is_haircut);
-                            
-                            $discount = ($eligible && $haircutServices->isNotEmpty()) 
-                                ? $haircutServices->max('price') 
-                                : 0;
+                            $discount = 0;
+
+                            if ($eligible && $hasHaircut) {
+                                // For free haircuts, we record 250 for the staff.
+                                // We adjust the subtotal and set the discount to 250.
+                                $subtotal = $subtotal - $maxHaircutPrice + 250;
+                                $discount = 250;
+                            }
                             
                             $set('subtotal', $subtotal);
                             $set('discount', $discount);
-                            $set('total', $subtotal - $discount);
+                            $set('total', max(0, $subtotal - $discount));
                         })
                         ->required(),
                 ]),
@@ -244,9 +288,8 @@ class CheckoutResource extends Resource
 
                     Forms\Components\TextInput::make('mpesa_reference')
                         ->label('M-Pesa Reference')
-                        ->placeholder('e.g. QGH7R3KLMN')
+                        ->placeholder('e.g. QGH7R3KLMN (optional)')
                         ->visible(fn (Get $get) => $get('payment_method') === 'mpesa')
-                        ->requiredIf('payment_method', 'mpesa')
                         ->maxLength(50),
 
                     Forms\Components\TextInput::make('subtotal')
@@ -331,6 +374,42 @@ class CheckoutResource extends Resource
                     ->openUrlInNewTab(),
             ])
             ->bulkActions([]);
+    }
+
+    public static function infolist(\Filament\Schemas\Schema $schema): \Filament\Schemas\Schema
+    {
+        return $schema->components([
+            \Filament\Schemas\Components\Section::make('Transaction Details')->components([
+                \Filament\Infolists\Components\TextEntry::make('id')->label('TX #'),
+                \Filament\Infolists\Components\TextEntry::make('served_at')->dateTime(),
+                \Filament\Infolists\Components\TextEntry::make('customer.name')
+                    ->label('Customer')
+                    ->placeholder('Walk-in'),
+                \Filament\Infolists\Components\TextEntry::make('payment_method')
+                    ->badge()
+                    ->formatStateUsing(fn ($state) => match($state) {
+                        'cash' => '💵 CASH',
+                        'mpesa' => '📱 M-PESA',
+                        default => strtoupper($state),
+                    })
+                    ->color(fn ($state) => match($state) {
+                        'mpesa' => 'success',
+                        'cash' => 'info',
+                        default => 'gray',
+                    }),
+                \Filament\Infolists\Components\TextEntry::make('total')->label('Total Paid')->money('KES'),
+                \Filament\Infolists\Components\IconEntry::make('is_free_haircut')->boolean()->label('Free Haircut'),
+                
+                \Filament\Infolists\Components\TextEntry::make('_services_list')
+                    ->label('Services & Staff')
+                    ->getStateUsing(fn ($record) => $record->items->map(fn($i) => ($i->service->name ?? 'Service') . ' — handled by ' . ($i->staff->name ?? 'Unknown') . ' (KES ' . number_format($i->line_total) . ')'))
+                    ->listWithLineBreaks()
+                    ->bulleted()
+                    ->columnSpanFull(),
+
+                \Filament\Infolists\Components\TextEntry::make('notes')->placeholder('—')->columnSpanFull(),
+            ])->columns(2),
+        ]);
     }
 
     public static function getPages(): array

@@ -44,6 +44,25 @@ class LoyaltyService
 
         $customer->total_visits++;
         $customer->save();
+
+        // If this is a free haircut transaction, ensure one haircut item is recorded as 250 KES
+        // for the staff revenue dashboard.
+        if ($transaction->is_free_haircut) {
+            $freeItem = $transaction->items->filter(fn($i) => $i->service?->is_haircut)->sortByDesc('unit_price')->first();
+            if ($freeItem) {
+                $freeItem->update([
+                    'unit_price' => 250,
+                    'line_total' => 250,
+                ]);
+                
+                // Also ensure the transaction subtotal/discount reflect this 250 value
+                // so the total remains correct (0 for the free item).
+                $otherItemsTotal = $transaction->items->where('id', '!=', $freeItem->id)->sum('line_total');
+                $transaction->subtotal = $otherItemsTotal + 250;
+                $transaction->discount = 250;
+            }
+        }
+
         $transaction->save();
     }
 
