@@ -52,7 +52,7 @@ class TenantResource extends Resource
             ])
             ->bulkActions([
                 \Filament\Actions\BulkActionGroup::make([
-                    \Filament\Actions\DeleteBulkAction::make(),
+                    // Delete removed as requested
                 ]),
             ]);
     }
@@ -65,4 +65,5 @@ class TenantResource extends Resource
     }
 
     public static function canEdit($record): bool { return false; }
+    public static function canDelete($record): bool { return false; }
 }

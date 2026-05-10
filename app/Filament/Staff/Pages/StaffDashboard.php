@@ -15,8 +15,10 @@ class StaffDashboard extends BaseDashboard
     public function getWidgets(): array
     {
         return [
+            \App\Filament\Staff\Widgets\InstallAppWidget::class,
             \App\Filament\Staff\Widgets\StaffStatsWidget::class,
             \App\Filament\Staff\Widgets\StaffRevenueChart::class,
+            \App\Filament\Staff\Widgets\StaffYearlyRevenueChart::class,
             \App\Filament\Staff\Widgets\StaffServiceMixChart::class,
             \App\Filament\Staff\Widgets\StaffRecentServicesWidget::class,
         ];

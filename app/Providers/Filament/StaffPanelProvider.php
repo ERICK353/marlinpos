@@ -26,6 +26,7 @@ class StaffPanelProvider extends PanelProvider
             ->id('staff')
             ->path('staff')
             ->login()
+            ->profile()
             ->brandName('Malyn Executive Barber')
             ->colors([
                 'primary' => Color::Blue,

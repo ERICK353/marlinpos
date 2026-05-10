@@ -26,6 +26,7 @@ class ReceptionPanelProvider extends PanelProvider
             ->id('reception')
             ->path('reception')
             ->login()
+            ->profile()
             ->brandName('Malyn Executive Barber')
             ->colors([
                 'primary' => Color::Emerald,

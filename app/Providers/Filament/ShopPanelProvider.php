@@ -31,6 +31,7 @@ class ShopPanelProvider extends PanelProvider
             ->id('shop')
             ->path('shop')
             ->login()
+            ->profile()
             ->brandName('Malyn Executive Barber')
             ->colors([
                 'primary' => Color::Amber,
