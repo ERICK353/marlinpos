@@ -14,6 +14,7 @@ class TransactionItem extends Model
         'quantity',
         'unit_price',
         'line_total',
+        'tip_amount',
         'commission_rate',
         'commission_amount',
     ];
@@ -23,6 +24,7 @@ class TransactionItem extends Model
         return [
             'unit_price'        => 'decimal:2',
             'line_total'        => 'decimal:2',
+            'tip_amount'        => 'decimal:2',
             'commission_rate'   => 'decimal:2',
             'commission_amount' => 'decimal:2',
         ];
@@ -30,17 +32,17 @@ class TransactionItem extends Model
 
     public function transaction(): BelongsTo
     {
-        return $this->belongsTo(Transaction::class);
+        return $this->belongsTo(Transaction::class)->withTrashed();
     }
 
     public function service(): BelongsTo
     {
-        return $this->belongsTo(Service::class);
+        return $this->belongsTo(Service::class)->withTrashed();
     }
 
     public function staff(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'staff_user_id');
+        return $this->belongsTo(User::class, 'staff_user_id')->withTrashed();
     }
 
     protected static function booted()

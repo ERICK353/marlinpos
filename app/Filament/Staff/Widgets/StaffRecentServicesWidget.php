@@ -41,11 +41,13 @@ class StaffRecentServicesWidget extends BaseWidget
                     ->formatStateUsing(fn ($state) => match($state) {
                         'cash' => '💵 CASH',
                         'mpesa' => '📱 M-PESA',
+                        'wallet' => '💰 WALLET',
                         default => strtoupper($state ?? '—'),
                     })
                     ->color(fn ($state) => match($state) {
                         'mpesa' => 'success',
                         'cash' => 'info',
+                        'wallet' => 'warning',
                         default => 'gray',
                     }),
             ])

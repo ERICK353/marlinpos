@@ -28,7 +28,6 @@ class StaffTransactionResource extends Resource
         return $table
             ->modifyQueryUsing(fn ($query) => $query->whereHas('items', fn ($q) => $q->where('staff_user_id', auth()->id())))
             ->columns([
-                Tables\Columns\TextColumn::make('id')->label('TX #')->sortable(),
                 Tables\Columns\TextColumn::make('customer.name')
                     ->label('Customer')
                     ->formatStateUsing(function ($state, $record) {
@@ -47,14 +46,27 @@ class StaffTransactionResource extends Resource
                     ->formatStateUsing(fn ($state) => match($state) {
                         'cash' => '💵 CASH',
                         'mpesa' => '📱 M-PESA',
+                        'wallet' => '💰 WALLET',
                         default => strtoupper($state ?? '—'),
                     })
                     ->color(fn ($state) => match($state) {
                         'mpesa' => 'success',
                         'cash' => 'info',
+                        'wallet' => 'warning',
                         default => 'gray',
                     }),
-                Tables\Columns\TextColumn::make('served_at')->dateTime()->sortable(),
+                Tables\Columns\TextColumn::make('served_at')
+                    ->label('Time')
+                    ->dateTime()
+                    ->sortable()
+                    ->html()
+                    ->formatStateUsing(function ($state, $record) {
+                        $time = $record->served_at->diffForHumans();
+                        $tag = $record->updated_at->gt($record->created_at->addSeconds(5)) 
+                            ? " <span style='background-color: #fef3c7; color: #92400e; padding: 1px 5px; border-radius: 9999px; font-size: 8px; font-weight: 800; text-transform: uppercase; margin-left: 4px; border: 1px solid #fde68a;'>Edited</span>" 
+                            : "";
+                        return "<span>{$time}</span>{$tag}";
+                    }),
             ])
             ->defaultSort('served_at', 'desc')
             ->actions([\Filament\Actions\ViewAction::make()])
@@ -72,11 +84,13 @@ class StaffTransactionResource extends Resource
                     ->formatStateUsing(fn ($state) => match($state) {
                         'cash' => '💵 CASH',
                         'mpesa' => '📱 M-PESA',
+                        'wallet' => '💰 WALLET',
                         default => strtoupper($state ?? '—'),
                     })
                     ->color(fn ($state) => match($state) {
                         'mpesa' => 'success',
                         'cash' => 'info',
+                        'wallet' => 'warning',
                         default => 'gray',
                     }),
                 Infolists\Components\TextEntry::make('is_free_haircut')->badge()->label('Loyalty Reward')

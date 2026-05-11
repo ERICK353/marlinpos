@@ -21,32 +21,38 @@ class CustomerResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            \Filament\Schemas\Components\Section::make('Register Customer')->components([
+                \Filament\Schemas\Components\Section::make('Register Customer')->components([
                 Forms\Components\TextInput::make('name')
                     ->label('Full Name')->maxLength(100),
                 Forms\Components\TextInput::make('phone')
                     ->label('Phone Number')->tel()->required()
                     ->unique(ignoreRecord: true)->maxLength(20),
                 Forms\Components\TextInput::make('loyalty_count')
-                    ->label('Haircuts Completed (Initial)')
+                    ->label('Starting Haircuts')
                     ->numeric()
                     ->default(0)
                     ->minValue(0)
                     ->maxValue(9)
-                    ->helperText('Initial count of haircuts for existing customers (0-9).'),
-            ])->columns(3),
+                    ->helperText('Number of haircuts they already have (0-9).'),
+                Forms\Components\TextInput::make('credit_balance')
+                    ->label('Wallet Balance')
+                    ->prefix('KES')
+                    ->numeric()
+                    ->disabled()
+                    ->dehydrated(false)
+                    ->visible(fn ($record) => filled($record)),
+            ])->columns(2),
         ]);
     }
-
+ 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('id')->label('ID')->sortable(),
                 Tables\Columns\TextColumn::make('name')->searchable()->placeholder('Unnamed'),
                 Tables\Columns\TextColumn::make('phone')->searchable(),
                 Tables\Columns\TextColumn::make('loyalty_count')
-                    ->label('Haircut Progress')
+                    ->label('Haircut Count')
                     ->html()
                     ->formatStateUsing(function ($state) {
                         $percent = min(100, round(($state / 9) * 100));
@@ -64,6 +70,11 @@ class CustomerResource extends Resource
                         ";
                     }),
                 Tables\Columns\TextColumn::make('total_visits')->label('Visits'),
+                Tables\Columns\TextColumn::make('credit_balance')
+                    ->label('Wallet')
+                    ->money('KES')
+                    ->badge()
+                    ->color(fn ($state) => (float)$state > 0 ? 'warning' : 'gray'),
                 Tables\Columns\TextColumn::make('enrolled_at')->date()->placeholder('—'),
             ])
             ->defaultSort('id', 'desc')

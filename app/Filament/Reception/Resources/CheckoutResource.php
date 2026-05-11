@@ -14,6 +14,7 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Resources\Resource;
+use Illuminate\Database\Eloquent\Builder;
 
 class CheckoutResource extends Resource
 {
@@ -21,8 +22,8 @@ class CheckoutResource extends Resource
 
     public static function getNavigationIcon(): string { return 'heroicon-o-shopping-cart'; }
     public static function getNavigationLabel(): string { return 'Checkout'; }
-    public static function getModelLabel(): string { return 'Transaction'; }
-    public static function getPluralModelLabel(): string { return 'Transactions'; }
+    public static function getModelLabel(): string { return 'Checkout'; }
+    public static function getPluralModelLabel(): string { return 'Checkouts'; }
     public static function getNavigationSort(): ?int { return 1; }
 
     public static function form(Schema $schema): Schema
@@ -34,280 +35,416 @@ class CheckoutResource extends Resource
             Forms\Components\Hidden::make('_customer_name')->dehydrated(false),
             Forms\Components\Hidden::make('_loyalty_count')->default(0)->dehydrated(false),
 
-            // ── Customer ──────────────────────────────────────────────────────
-            \Filament\Schemas\Components\Section::make('Customer')
-                ->icon('heroicon-o-user')
-                ->components([
-                    Forms\Components\Toggle::make('is_walk_in')
-                        ->label('Walk-in Customer (No loyalty tracking)')
-                        ->default(false)
-                        ->live()
-                        ->dehydrated(false)
-                        ->afterStateUpdated(function (Set $set, Get $get, $state) {
-                            if ($state) {
-                                $set('customer_phone', null);
-                                $set('customer_id', null);
-                                $set('_customer_name', null);
-                                $set('_loyalty_count', 0);
-                                $set('_loyalty_eligible', false);
-                                $set('enroll_new', false);
-
-                                // Recalculate without discount
-                                $itemsData = $get('items') ?? [];
-                                $serviceIds = array_column($itemsData, 'service_id');
-                                if (! empty($serviceIds)) {
-                                    $subtotal = Service::whereIn('id', $serviceIds)->sum('price');
-                                    $set('subtotal', $subtotal);
-                                    $set('discount', 0);
-                                    $set('total', $subtotal);
+            \Filament\Schemas\Components\Wizard::make([
+                // ── STEP 1: Enter Customer Information ────────────────────────────
+                \Filament\Schemas\Components\Wizard\Step::make('Enter Customer Information')
+                    ->icon('heroicon-o-user')
+                    ->schema([
+                        Forms\Components\Toggle::make('is_walk_in')
+                            ->label('Walk-in Customer (No loyalty tracking)')
+                            ->default(false)
+                            ->live()
+                            ->dehydrated(false)
+                            ->disabled(fn ($record) => filled($record))
+                            ->visible(fn (Get $get) => ! (bool) $get('enroll_new'))
+                            ->afterStateUpdated(function (Set $set, Get $get, $state) {
+                                if ($state) {
+                                    $set('customer_phone', null);
+                                    $set('customer_id', null);
+                                    $set('_customer_name', null);
+                                    $set('_loyalty_count', 0);
+                                    $set('_loyalty_eligible', false);
+                                    $set('enroll_new', false);
                                 }
-                            }
-                        }),
+                            }),
 
-                    Forms\Components\Select::make('customer_id')
-                        ->label('Select Customer')
-                        ->placeholder('Search by name or phone…')
-                        ->searchable()
-                        ->getSearchResultsUsing(fn (string $search) => 
-                            Customer::where('name', 'like', "%{$search}%")
-                                ->orWhere('phone', 'like', "%{$search}%")
-                                ->limit(50)
-                                ->get()
-                                ->mapWithKeys(fn ($c) => [$c->id => ($c->name ?? 'Unnamed') . " ({$c->phone})"])
-                        )
-                        ->getOptionLabelUsing(fn ($value) => Customer::find($value) ? (Customer::find($value)->name ?? 'Unnamed') . ' (' . Customer::find($value)->phone . ')' : null)
-                        ->required(fn (Get $get) => ! $get('is_walk_in') && ! $get('enroll_new'))
-                        ->visible(fn (Get $get) => ! $get('is_walk_in') && ! $get('enroll_new'))
-                        ->live()
-                        ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                            if (! $state) {
-                                $set('_customer_name', null);
-                                $set('_loyalty_count', 0);
-                                $set('_loyalty_eligible', false);
-                                return;
-                            }
-
-                            $customer = Customer::find($state);
-                            if ($customer) {
-                                $eligible = $customer->isEligibleForFreeHaircut();
-                                $set('_customer_name', $customer->name ?? 'Enrolled member');
-                                $set('_loyalty_count', $customer->loyalty_count);
-                                $set('_loyalty_eligible', $eligible);
-
-                                // Recalculate totals
-                                $itemsData = $get('items') ?? [];
-                                $serviceIds = array_column($itemsData, 'service_id');
-                                if (! empty($serviceIds)) {
-                                    $services = Service::whereIn('id', $serviceIds)->get()->keyBy('id');
-                                    $subtotal = 0;
-                                    $maxHaircutPrice = 0;
-                                    $hasHaircut = false;
-
-                                    foreach ($itemsData as $item) {
-                                        if ($serviceId = $item['service_id'] ?? null) {
-                                            $service = $services[$serviceId] ?? null;
-                                            if ($service) {
-                                                $subtotal += $service->price;
-                                                if ($service->is_haircut) {
-                                                    $hasHaircut = true;
-                                                    if ($service->price > $maxHaircutPrice) {
-                                                        $maxHaircutPrice = $service->price;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                    $discount = 0;
-                                    if ($eligible && $hasHaircut) {
-                                        $subtotal = $subtotal - $maxHaircutPrice + 250;
-                                        $discount = 250;
-                                    }
-                                    
-                                    $set('subtotal', $subtotal);
-                                    $set('discount', $discount);
-                                    $set('total', max(0, $subtotal - $discount));
+                        Forms\Components\Select::make('customer_id')
+                            ->label('Select Existing Customer')
+                            ->relationship('customer', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->live()
+                            ->required(fn (Get $get) => ! (bool) $get('is_walk_in') && ! (bool) $get('enroll_new'))
+                            ->disabled(fn ($record) => filled($record))
+                            ->visible(fn (Get $get) => ! (bool) $get('is_walk_in') && ! (bool) $get('enroll_new'))
+                            ->afterStateUpdated(function (?string $state, Set $set, Get $get) {
+                                if (blank($state)) {
+                                    $set('_customer_name', null);
+                                    $set('_loyalty_count', 0);
+                                    $set('_loyalty_eligible', false);
+                                    return;
                                 }
-                            }
-                        }),
+                                $customer = Customer::find($state);
+                                if ($customer) {
+                                    $set('_customer_name', $customer->name);
+                                    $set('_loyalty_count', $customer->loyalty_count);
+                                    $set('_loyalty_eligible', $customer->isEligibleForFreeHaircut());
+                                    $set('enroll_new', false);
+                                }
+                            }),
 
-                    // Keep phone input for manual entry/enrollment if not found in dropdown
-                    Forms\Components\TextInput::make('customer_phone')
-                        ->label('New Customer Phone')
-                        ->tel()
-                        ->placeholder('Enter phone to enroll…')
-                        ->visible(fn (Get $get) => ! $get('is_walk_in') && blank($get('customer_id')))
-                        ->live(onBlur: true)
-                        ->dehydrated(false)
-                        ->afterStateUpdated(function (?string $state, Set $set, Get $get) {
-                            if (blank($state)) return;
-                            
-                            // If phone already exists, switch to that customer automatically
-                            $customer = Customer::where('phone', $state)->first();
-                            if ($customer) {
-                                $set('customer_id', $customer->id);
-                                $set('_customer_name', $customer->name ?? 'Enrolled member');
-                                $set('_loyalty_count', $customer->loyalty_count);
-                                $set('_loyalty_eligible', $customer->isEligibleForFreeHaircut());
-                                $set('enroll_new', false);
-                            }
-                        }),
+                        Forms\Components\Toggle::make('enroll_new')
+                            ->label('Enroll New Customer')
+                            ->live()
+                            ->dehydrated(false)
+                            ->disabled(fn ($record) => filled($record))
+                            ->visible(fn (Get $get) => ! (bool) $get('is_walk_in') && blank($get('customer_id'))),
 
-                    Forms\Components\Placeholder::make('_customer_info')
-                        ->label('Haircut Loyalty Status')
-                        ->visible(fn (Get $get) => filled($get('customer_id')))
-                        ->content(function (Get $get) {
-                            $count    = $get('_loyalty_count') ?? 0;
-                            $eligible = (bool) $get('_loyalty_eligible');
-                            $name     = $get('_customer_name') ?? 'Customer';
-                            if ($eligible) {
-                                return "⭐ {$name} — FREE HAIRCUT ELIGIBLE! (9/9 haircuts completed)";
-                            }
-                            return "{$name} — Haircut progress: {$count}/9 haircuts";
-                        })
-                        ->columnSpanFull(),
+                        Forms\Components\TextInput::make('customer_phone')
+                            ->label('New Customer Phone')
+                            ->tel()
+                            ->placeholder('Enter phone…')
+                            ->required(fn (Get $get) => (bool) $get('enroll_new'))
+                            ->visible(fn (Get $get) => (bool) $get('enroll_new'))
+                            ->live()
+                            ->dehydrated(false)
+                            ->afterStateUpdated(function (?string $state, Set $set) {
+                                if (blank($state)) return;
+                                $customer = Customer::where('phone', $state)->first();
+                                if ($customer) {
+                                    $set('customer_id', $customer->id);
+                                    $set('_customer_name', $customer->name ?? 'Enrolled member');
+                                    $set('_loyalty_count', $customer->loyalty_count);
+                                    $set('_loyalty_eligible', $customer->isEligibleForFreeHaircut());
+                                    $set('enroll_new', false);
+                                }
+                            }),
 
-                    // New enrollment toggle
-                    Forms\Components\Toggle::make('enroll_new')
-                        ->label('Enroll in Haircut Loyalty Program')
-                        ->live()
-                        ->dehydrated(false)
-                        ->visible(fn (Get $get) => blank($get('customer_id')) && filled($get('customer_phone'))),
+                        Forms\Components\TextInput::make('new_customer_name')
+                            ->label('Customer Name (optional)')
+                            ->maxLength(100)
+                            ->dehydrated(false)
+                            ->visible(fn (Get $get) => (bool) $get('enroll_new')),
 
-                    Forms\Components\TextInput::make('new_customer_name')
-                        ->label('Customer Name (optional)')
-                        ->maxLength(100)
-                        ->dehydrated(false)
-                        ->visible(fn (Get $get) => (bool) $get('enroll_new')),
+                        Forms\Components\TextInput::make('initial_loyalty_count')
+                            ->label('Initial Haircut Count')
+                            ->numeric()
+                            ->default(0)
+                            ->minValue(0)
+                            ->maxValue(9)
+                            ->helperText('Previous haircuts (0-9).')
+                            ->required(fn (Get $get) => (bool) $get('enroll_new'))
+                            ->dehydrated(false)
+                            ->visible(fn (Get $get) => (bool) $get('enroll_new'))
+                            ->live()
+                            ->afterStateUpdated(function ($state, Set $set) {
+                                $set('_loyalty_eligible', (int) $state >= 9);
+                            }),
 
-                    Forms\Components\TextInput::make('initial_loyalty_count')
-                        ->label('Initial Haircut Count')
-                        ->numeric()
-                        ->default(0)
-                        ->minValue(0)
-                        ->maxValue(9)
-                        ->helperText('Previous haircuts before enrollment (0-9).')
-                        ->dehydrated(false)
-                        ->visible(fn (Get $get) => (bool) $get('enroll_new')),
-                ])
-                ->columns(2),
+                        Forms\Components\TextInput::make('initial_wallet_balance')
+                            ->label('Starting Wallet Balance')
+                            ->numeric()
+                            ->prefix('KES')
+                            ->default(0)
+                            ->minValue(0)
+                            ->required(fn (Get $get) => (bool) $get('enroll_new'))
+                            ->dehydrated(false)
+                            ->visible(fn (Get $get) => (bool) $get('enroll_new')),
 
-            // ── Services ──────────────────────────────────────────────────────
-            \Filament\Schemas\Components\Section::make('Services')
-                ->icon('heroicon-o-scissors')
-                ->components([
-                    Forms\Components\Repeater::make('items')
-                        ->relationship('items')
-                        ->label('Services Performed')
-                        ->schema([
-                            Forms\Components\Select::make('service_id')
-                                ->label('Service')
-                                ->options(fn () => Service::active()->pluck('name', 'id'))
-                                ->required()
-                                ->live()
-                                ->afterStateUpdated(function (Set $set, Get $get) {
-                                    // Trigger main recalculation via live
-                                }),
+                        Forms\Components\Placeholder::make('_customer_info')
+                            ->label('Haircut Loyalty Status')
+                            ->visible(fn (Get $get) => filled($get('customer_id')))
+                            ->content(function (Get $get) {
+                                $count    = $get('_loyalty_count') ?? 0;
+                                $eligible = (bool) $get('_loyalty_eligible');
+                                $name     = $get('_customer_name') ?? 'Customer';
+                                return $eligible ? "{$name} — Free Haircut Eligible (9/9)" : "{$name} — Progress: {$count}/9";
+                            })
+                            ->columnSpanFull(),
+                    ])->columns(2),
 
-                            Forms\Components\Select::make('staff_user_id')
-                                ->label('Staff Member')
-                                ->options(fn () => User::where('role', 'staff')->pluck('name', 'id'))
-                                ->searchable()
-                                ->required(),
+                // ── STEP 2: Enter Services Information ────────────────────────────
+                \Filament\Schemas\Components\Wizard\Step::make('Enter Services Information')
+                    ->icon('heroicon-o-scissors')
+                    ->schema([
+                        Forms\Components\Repeater::make('items')
+                            ->relationship('items')
+                            ->label('Services Performed')
+                            ->schema([
+                                Forms\Components\Select::make('service_id')
+                                    ->label('Service')
+                                    ->options(fn () => Service::active()->pluck('name', 'id'))
+                                    ->required()
+                                    ->disabled(fn ($record) => filled($record))
+                                    ->live()
+                                    ->columnSpan(4),
 
-                            Forms\Components\TextInput::make('unit_price')
-                                ->label('Price')
-                                ->numeric()
-                                ->prefix('KES')
-                                ->disabled()
-                                ->dehydrated()
-                                ->visible(fn ($record) => filled($record)),
+                                Forms\Components\Select::make('staff_user_id')
+                                    ->label('Staff Member')
+                                    ->options(fn () => User::where('role', 'staff')->pluck('name', 'id'))
+                                    ->searchable()
+                                    ->required()
+                                    ->disabled(fn ($record) => filled($record))
+                                    ->columnSpan(4),
 
-                            Forms\Components\Hidden::make('line_total')
-                                ->dehydrated(),
-                        ])
-                        ->columns(fn ($record) => filled($record) ? 3 : 2)
-                        ->defaultItems(1)
-                        ->live()
-                        ->afterStateUpdated(function (?array $state, Set $set, Get $get) {
-                            $serviceIds = array_column($state ?? [], 'service_id');
-                            if (empty($serviceIds)) {
-                                $set('subtotal', 0);
-                                $set('discount', 0);
-                                $set('total', 0);
-                                return;
-                            }
-                            
-                            $services = Service::whereIn('id', $serviceIds)->get()->keyBy('id');
-                            $subtotal = 0;
-                            $maxHaircutPrice = 0;
-                            $hasHaircut = false;
+                                Forms\Components\TextInput::make('unit_price')
+                                    ->label('Price')
+                                    ->numeric()
+                                    ->prefix('KES')
+                                    ->disabled()
+                                    ->dehydrated()
+                                    ->visible(fn ($record) => filled($record))
+                                    ->columnSpan(2),
 
-                            foreach ($state as $item) {
-                                if ($serviceId = $item['service_id'] ?? null) {
-                                    $service = $services[$serviceId] ?? null;
-                                    if ($service) {
-                                        $subtotal += $service->price;
-                                        if ($service->is_haircut) {
-                                            $hasHaircut = true;
-                                            if ($service->price > $maxHaircutPrice) {
-                                                $maxHaircutPrice = $service->price;
+                                Forms\Components\TextInput::make('tip_amount')
+                                    ->label('Tip Amount')
+                                    ->prefix('KES')
+                                    ->numeric()
+                                    ->default(0)
+                                    ->minValue(0)
+                                    ->required()
+                                    ->live()
+                                    ->disabled(fn ($record) => filled($record))
+                                    ->columnSpan(fn ($record) => filled($record) ? 2 : 4),
+                                
+                                Forms\Components\Hidden::make('line_total')->dehydrated(),
+                            ])
+                            ->columns(12)
+                            ->defaultItems(1)
+                            ->addable(fn ($record) => blank($record))
+                            ->deletable(fn ($record) => blank($record))
+                            ->reorderable(false)
+                            ->live()
+                            ->afterStateUpdated(function (?array $state, Set $set, Get $get) {
+                                $serviceIds = array_column($state ?? [], 'service_id');
+                                if (empty($serviceIds)) {
+                                    $set('subtotal', 0); $set('discount', 0); $set('total', 0); return;
+                                }
+                                $services = Service::whereIn('id', $serviceIds)->get()->keyBy('id');
+                                $subtotal = 0; $maxHaircutPrice = 0; $hasHaircut = false;
+                                foreach ($state as $item) {
+                                    if ($sId = $item['service_id'] ?? null) {
+                                        if ($s = $services[$sId] ?? null) {
+                                            $subtotal += $s->price;
+                                            if ($s->is_haircut) {
+                                                $hasHaircut = true;
+                                                $maxHaircutPrice = max($maxHaircutPrice, $s->price);
                                             }
                                         }
                                     }
                                 }
-                            }
+                                $discount = ((bool) $get('_loyalty_eligible') && $hasHaircut) ? 250 : 0;
+                                if ($discount > 0) $subtotal = $subtotal - $maxHaircutPrice + 250;
+                                
+                                $tips = collect($state ?? [])->sum(fn($i) => (float)($i['tip_amount'] ?? 0));
+                                $set('subtotal', $subtotal);
+                                $set('discount', $discount);
+                                $set('total', max(0, (float)$subtotal - (float)$discount + (float)$tips));
+                            })
+                            ->required(),
+                    ]),
 
-                            $eligible = (bool) $get('_loyalty_eligible');
-                            $discount = 0;
+                // ── STEP 3: Enter Payment Information ─────────────────────────────
+                \Filament\Schemas\Components\Wizard\Step::make('Enter Payment Information')
+                    ->icon('heroicon-o-banknotes')
+                    ->schema([
+                        Forms\Components\Radio::make('payment_method')
+                            ->label('Payment Method')
+                            ->options(function (Get $get) {
+                                $options = [
+                                    'cash' => '💵 Cash', 
+                                    'mpesa' => '📱 M-Pesa',
+                                    'split' => '🌓 Split: Cash + M-Pesa'
+                                ];
+                                if ($id = $get('customer_id')) {
+                                    if ($c = Customer::find($id)) {
+                                        $balance = (float) $c->credit_balance;
+                                        if ($balance > 0) {
+                                            $total = (float) $get('total');
+                                            if ($balance >= $total) {
+                                                $options['wallet'] = '💰 Full Wallet Payment';
+                                            } else {
+                                                $options['wallet'] = '🌓 Split: Wallet + Cash/M-Pesa';
+                                            }
+                                        }
+                                    }
+                                }
+                                return $options;
+                            })
+                            ->required()
+                            ->disabled(fn ($record) => filled($record))
+                            ->live()
+                            ->inline(),
 
-                            if ($eligible && $hasHaircut) {
-                                // For free haircuts, we record 250 for the staff.
-                                // We adjust the subtotal and set the discount to 250.
-                                $subtotal = $subtotal - $maxHaircutPrice + 250;
-                                $discount = 250;
-                            }
-                            
-                            $set('subtotal', $subtotal);
-                            $set('discount', $discount);
-                            $set('total', max(0, $subtotal - $discount));
-                        })
-                        ->required(),
-                ]),
+                        \Filament\Schemas\Components\Grid::make(2)
+                            ->visible(fn (Get $get) => $get('payment_method') === 'split')
+                            ->schema([
+                                Forms\Components\TextInput::make('mpesa_paid')
+                                    ->label('Amount via M-Pesa')
+                                    ->numeric()
+                                    ->prefix('KES')
+                                    ->live()
+                                    ->required(fn (Get $get) => $get('payment_method') === 'split')
+                                    ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                                        $total = (float) $get('total');
+                                        $mpesa = (float) $state;
+                                        $set('amount_tendered', max(0, $total - $mpesa));
+                                        $set('change_due', 0);
+                                    }),
+                                Forms\Components\TextInput::make('cash_paid')
+                                    ->label('Amount via Cash')
+                                    ->numeric()
+                                    ->prefix('KES')
+                                    ->live()
+                                    ->required(fn (Get $get) => $get('payment_method') === 'split')
+                                    ->afterStateUpdated(function ($state, Set $set) {
+                                        $set('amount_tendered', (float) $state);
+                                        $set('change_due', 0);
+                                    }),
+                            ]),
 
-            // ── Payment ───────────────────────────────────────────────────────
-            \Filament\Schemas\Components\Section::make('Payment')
-                ->icon('heroicon-o-banknotes')
-                ->components([
-                    Forms\Components\Radio::make('payment_method')
-                        ->label('Payment Method')
-                        ->options(['cash' => '💵 Cash', 'mpesa' => '📱 M-Pesa'])
-                        ->required()
-                        ->live()
-                        ->inline(),
+                        Forms\Components\Placeholder::make('_split_payment_info')
+                            ->label('Split Payment Breakdown')
+                            ->visible(fn (Get $get) => $get('payment_method') === 'wallet')
+                            ->content(function (Get $get) {
+                                if ($id = $get('customer_id')) {
+                                    $c = Customer::find($id);
+                                    if ($c) {
+                                        $balance = (float) $c->credit_balance;
+                                        $total = (float) $get('total');
+                                        if ($balance < $total) {
+                                            $remaining = $total - $balance;
+                                            return "Wallet: KES " . number_format($balance, 2) . " | Remaining: KES " . number_format($remaining, 2);
+                                        }
+                                        return "Full amount of KES " . number_format($total, 2) . " will be deducted from wallet.";
+                                    }
+                                }
+                                return null;
+                            }),
 
-                    Forms\Components\TextInput::make('mpesa_reference')
-                        ->label('M-Pesa Reference')
-                        ->placeholder('e.g. QGH7R3KLMN (optional)')
-                        ->visible(fn (Get $get) => $get('payment_method') === 'mpesa')
-                        ->maxLength(50),
+                        Forms\Components\Select::make('split_secondary_method')
+                            ->label('Pay Remaining Balance Via')
+                            ->options(['cash' => '💵 Cash', 'mpesa' => '📱 M-Pesa'])
+                            ->required(function (Get $get) {
+                                if ($get('payment_method') !== 'wallet') return false;
+                                if ($id = $get('customer_id')) {
+                                    $c = Customer::find($id);
+                                    return $c && (float)$c->credit_balance < (float)$get('total');
+                                }
+                                return false;
+                            })
+                            ->visible(function (Get $get) {
+                                if ($get('payment_method') !== 'wallet') return false;
+                                if ($id = $get('customer_id')) {
+                                    $c = Customer::find($id);
+                                    return $c && (float)$c->credit_balance < (float)$get('total');
+                                }
+                                return false;
+                            })
+                            ->live(),
 
-                    Forms\Components\TextInput::make('subtotal')
-                        ->label('Subtotal')->prefix('KES')
-                        ->numeric()->disabled()->dehydrated()->default(0),
+                        Forms\Components\TextInput::make('mpesa_reference')
+                            ->label('M-Pesa Reference (optional)')
+                            ->unique(ignoreRecord: true)
+                            ->visible(fn (Get $get) => 
+                                $get('payment_method') === 'mpesa' || 
+                                $get('payment_method') === 'split' ||
+                                ($get('payment_method') === 'wallet' && $get('split_secondary_method') === 'mpesa')
+                            )
+                            ->maxLength(50),
 
-                    Forms\Components\TextInput::make('discount')
-                        ->label('Haircut Reward')->prefix('KES')
-                        ->numeric()->disabled()->dehydrated()->default(0),
+                        \Filament\Schemas\Components\Grid::make(3)
+                            ->schema([
+                                Forms\Components\TextInput::make('subtotal')->label('Total Items')->prefix('KES')->numeric()->disabled()->dehydrated(),
+                                Forms\Components\TextInput::make('discount')->label('Loyalty Discount')->prefix('KES')->numeric()->disabled()->dehydrated(),
+                                Forms\Components\TextInput::make('total')->label('TOTAL')->prefix('KES')->numeric()->disabled()->dehydrated(),
+                            ]),
 
-                    Forms\Components\TextInput::make('total')
-                        ->label('TOTAL')->prefix('KES')
-                        ->numeric()->disabled()->dehydrated()->default(0),
+                        Forms\Components\Hidden::make('credit_used')->default(0),
+                        Forms\Components\Hidden::make('change_due')->default(0),
+                        Forms\Components\Hidden::make('credit_stored')->default(0),
 
-                    Forms\Components\Textarea::make('notes')
-                        ->rows(2)->placeholder('Optional notes…')->columnSpanFull(),
-                ])
-                ->columns(3),
+                        // ── Cash Change Calculator ────────────────────────────────
+                        Forms\Components\TextInput::make('amount_tendered')
+                            ->label(function(Get $get) {
+                                if ($get('payment_method') === 'wallet') return 'Additional Cash Given';
+                                if ($get('payment_method') === 'split') return 'Physical Cash Given';
+                                return 'Amount Given';
+                            })
+                            ->prefix('KES')
+                            ->numeric()
+                            ->live()
+                            ->required(fn (Get $get) => 
+                                $get('payment_method') === 'cash' || 
+                                $get('payment_method') === 'split' ||
+                                ($get('payment_method') === 'wallet' && $get('split_secondary_method') === 'cash')
+                            )
+                            ->minValue(function (Get $get) {
+                                $total = (float) $get('total');
+                                if ($get('payment_method') === 'wallet') {
+                                    if ($id = $get('customer_id')) {
+                                        $c = Customer::find($id);
+                                        if ($c) {
+                                            $balance = (float) $c->credit_balance;
+                                            return max(0, $total - $balance);
+                                        }
+                                    }
+                                }
+                                if ($get('payment_method') === 'split') {
+                                    return (float) $get('cash_paid');
+                                }
+                                return $total;
+                            })
+                            ->visible(fn (Get $get) => 
+                                $get('payment_method') === 'cash' || 
+                                $get('payment_method') === 'split' ||
+                                ($get('payment_method') === 'wallet' && $get('split_secondary_method') === 'cash')
+                            )
+                            ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                                $total = (float) $get('total');
+                                $tendered = (float) $state;
+                                if ($get('payment_method') === 'wallet') {
+                                    if ($id = $get('customer_id')) {
+                                        $c = Customer::find($id);
+                                        if ($c) {
+                                            $balance = (float) $c->credit_balance;
+                                            $remaining = max(0, $total - $balance);
+                                            $set('change_due', max(0, $tendered - $remaining));
+                                            return;
+                                        }
+                                    }
+                                }
+                                if ($get('payment_method') === 'split') {
+                                    $cashNeeded = (float) $get('cash_paid');
+                                    $set('change_due', max(0, $tendered - $cashNeeded));
+                                    return;
+                                }
+                                $set('change_due', max(0, $tendered - $total));
+                            }),
+
+                        Forms\Components\Placeholder::make('_change_display')
+                            ->label('Change')
+                            ->content(fn (Get $get) => 'KES ' . number_format((float) $get('change_due'), 2))
+                            ->visible(fn (Get $get) => 
+                                ($get('payment_method') === 'cash' || $get('payment_method') === 'split' || ($get('payment_method') === 'wallet' && $get('split_secondary_method') === 'cash')) 
+                                && filled($get('amount_tendered'))
+                            ),
+
+                        Forms\Components\Radio::make('store_change_as_credit')
+                            ->label('Change Action')
+                            ->options([
+                                '0' => '💵 Hand to Customer',
+                                '1' => '💰 Store in Wallet',
+                            ])
+                            ->required(fn (Get $get) => 
+                                (float)$get('change_due') > 0 && (
+                                    $get('payment_method') === 'cash' || 
+                                    $get('payment_method') === 'split' ||
+                                    ($get('payment_method') === 'wallet' && $get('split_secondary_method') === 'cash')
+                                )
+                            )
+                            ->inline()
+                            ->visible(fn (Get $get) =>
+                                (float) $get('change_due') > 0 &&
+                                (filled($get('customer_id')) || (bool) $get('enroll_new')) &&
+                                ($get('payment_method') === 'cash' || $get('payment_method') === 'split' || ($get('payment_method') === 'wallet' && $get('split_secondary_method') === 'cash'))
+                            ),
+
+                        Forms\Components\Textarea::make('notes')
+                            ->label('Notes (optional)')
+                            ->rows(2)->placeholder('Optional notes…')->columnSpanFull(),
+                    ]),
+            ])->columnSpanFull()
         ]);
     }
 
@@ -315,19 +452,29 @@ class CheckoutResource extends Resource
     {
         return $table
             ->modifyQueryUsing(fn ($query) =>
-                $query->where('reception_user_id', auth()->id())
-                      ->orderByDesc('served_at')
+                $query->orderByDesc('served_at')
             )
             ->columns([
                 Tables\Columns\TextColumn::make('customer.name')
                     ->label('Customer')
+                    ->searchable()
+                    ->html()
                     ->formatStateUsing(function ($state, $record) {
                         if (! $record->customer_id) return 'Walk-in';
-                        return $state ?? 'Unnamed';
+                        $name = $state ?? 'Unnamed';
+                        if ($record->customer?->trashed()) {
+                            return "
+                                <div style='display: flex; align-items: center; gap: 8px;'>
+                                    <span>{$name}</span>
+                                    <span style='background-color: #fee2e2; color: #b91c1c; padding: 1px 5px; border-radius: 9999px; font-size: 8px; font-weight: 800; text-transform: uppercase; border: 1px solid #fecaca;'>Deleted</span>
+                                </div>
+                            ";
+                        }
+                        return $name;
                     }),
-                Tables\Columns\TextColumn::make('customer.phone')->label('Phone')->placeholder('—'),
+                Tables\Columns\TextColumn::make('customer.phone')->label('Phone')->placeholder('—')->searchable()->toggleable(),
                 Tables\Columns\TextColumn::make('customer.loyalty_count')
-                    ->label('New Progress')
+                    ->label('Progress')
                     ->html()
                     ->formatStateUsing(function ($state) {
                         if ($state === null) return '—';
@@ -342,24 +489,59 @@ class CheckoutResource extends Resource
                                 <span class='text-xs font-medium'>{$state}/9</span>
                             </div>
                         ";
-                    }),
-                Tables\Columns\TextColumn::make('items.staff.name')
+                    })->toggleable(),
+                Tables\Columns\TextColumn::make('id')
                     ->label('Staff')
-                    ->listWithLineBreaks()
-                    ->bulleted(),
+                    ->html()
+                    ->formatStateUsing(function ($record) {
+                        return $record->items->map(function ($item) {
+                            $name = $item->staff?->name ?? 'Unknown';
+                            $tag = $item->staff?->trashed() 
+                                ? " <span style='background-color: #fee2e2; color: #b91c1c; padding: 1px 5px; border-radius: 9999px; font-size: 8px; font-weight: 800; text-transform: uppercase; margin-left: 4px; border: 1px solid #fecaca;'>Deleted</span>" 
+                                : "";
+                            return "• {$name}{$tag}";
+                        })->unique()->implode('<br>');
+                    })
+                    ->searchable(query: fn (Builder $query, string $search): Builder => 
+                        $query->whereHas('items.staff', fn ($q) => $q->where('name', 'like', "%{$search}%"))
+                    )->toggleable(),
+                Tables\Columns\TextColumn::make('items.service.name')
+                    ->label('Services')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('payment_method')
                     ->badge()
                     ->formatStateUsing(fn ($state) => match($state) {
                         'cash' => '💵 CASH',
                         'mpesa' => '📱 M-PESA',
+                        'wallet' => '💰 WALLET',
+                        'split' => '🌓 SPLIT',
                         default => strtoupper($state),
                     })
                     ->color(fn ($state) => match($state) {
                         'mpesa' => 'success',
                         'cash' => 'info',
+                        'wallet' => 'warning',
+                        'split' => 'primary',
                         default => 'gray',
                     })
-                    ->description(fn ($record) => $record->payment_method === 'mpesa' ? $record->mpesa_reference : null),
+                    ->description(function ($record) {
+                        if ($record->payment_method === 'split') {
+                            $desc = "📱 KES " . number_format($record->mpesa_paid, 0) . " | 💵 KES " . number_format($record->cash_paid, 0);
+                            if ($record->mpesa_reference) $desc .= " ({$record->mpesa_reference})";
+                            return $desc;
+                        }
+                        if ($record->payment_method === 'mpesa') return $record->mpesa_reference;
+                        if ($record->payment_method === 'cash') {
+                            if ($record->credit_stored > 0) {
+                                return "💰 KES " . number_format($record->credit_stored, 0) . " stored in wallet";
+                            }
+                            if ($record->change_due > 0) {
+                                return "💵 KES " . number_format($record->change_due, 0) . " change given";
+                            }
+                        }
+                        return null;
+                    }),
                 Tables\Columns\TextColumn::make('subtotal')
                     ->label('Gross')
                     ->money('KES')
@@ -368,12 +550,30 @@ class CheckoutResource extends Resource
                     ->label('Discount')
                     ->money('KES')
                     ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('tip_amount')
+                    ->label('Tip Amount')
+                    ->money('KES')
+                    ->state(fn ($record) => $record->items->sum('tip_amount'))
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('total')->money('KES'),
-                Tables\Columns\IconColumn::make('is_free_haircut')->boolean()->label('Free'),
-                Tables\Columns\TextColumn::make('served_at')->dateTime()->since(),
+                Tables\Columns\IconColumn::make('is_free_haircut')->boolean()->label('Free')->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('served_at')
+                    ->label('Time')
+                    ->dateTime()
+                    ->since()
+                    ->html()
+                    ->formatStateUsing(function ($state, $record) {
+                        $time = $record->served_at->diffForHumans();
+                        $tag = $record->updated_at->gt($record->created_at->addSeconds(5)) 
+                            ? " <span style='background-color: #fef3c7; color: #92400e; padding: 1px 5px; border-radius: 9999px; font-size: 8px; font-weight: 800; text-transform: uppercase; margin-left: 4px; border: 1px solid #fde68a;'>Edited</span>" 
+                            : "";
+                        return "<span>{$time}</span>{$tag}";
+                    }),
             ])
             ->actions([
                 \Filament\Actions\ViewAction::make(),
+                \Filament\Actions\EditAction::make(),
+                \Filament\Actions\DeleteAction::make(),
                 \Filament\Actions\Action::make('print_receipt')
                     ->label('Print Receipt')
                     ->icon('heroicon-o-printer')
@@ -381,7 +581,11 @@ class CheckoutResource extends Resource
                     ->url(fn (Transaction $record) => route('receipt.show', $record))
                     ->openUrlInNewTab(),
             ])
-            ->bulkActions([]);
+            ->bulkActions([
+                \Filament\Actions\BulkActionGroup::make([
+                    \Filament\Actions\DeleteBulkAction::make(),
+                ]),
+            ]);
     }
 
     public static function infolist(\Filament\Schemas\Schema $schema): \Filament\Schemas\Schema
@@ -398,15 +602,34 @@ class CheckoutResource extends Resource
                     ->formatStateUsing(fn ($state) => match($state) {
                         'cash' => '💵 CASH',
                         'mpesa' => '📱 M-PESA',
+                        'wallet' => '💰 WALLET',
+                        'split' => '🌓 SPLIT',
                         default => strtoupper($state),
                     })
                     ->color(fn ($state) => match($state) {
                         'mpesa' => 'success',
                         'cash' => 'info',
+                        'wallet' => 'warning',
+                        'split' => 'primary',
                         default => 'gray',
                     }),
                 \Filament\Infolists\Components\TextEntry::make('total')->label('Total Paid')->money('KES'),
                 \Filament\Infolists\Components\IconEntry::make('is_free_haircut')->boolean()->label('Free Haircut'),
+
+                \Filament\Infolists\Components\TextEntry::make('mpesa_paid')
+                    ->label('Paid via M-Pesa')
+                    ->money('KES')
+                    ->visible(fn($record) => $record?->payment_method === 'split' || $record?->payment_method === 'mpesa'),
+                
+                \Filament\Infolists\Components\TextEntry::make('cash_paid')
+                    ->label('Paid via Cash')
+                    ->money('KES')
+                    ->visible(fn($record) => $record?->payment_method === 'split'),
+
+                \Filament\Infolists\Components\TextEntry::make('amount_tendered')->label('Cash Given')->money('KES')->visible(fn($record) => $record?->payment_method === 'cash'),
+                \Filament\Infolists\Components\TextEntry::make('change_due')->label('Change Provided')->money('KES')->visible(fn($record) => $record?->payment_method === 'cash' && (float)$record?->credit_stored <= 0),
+                \Filament\Infolists\Components\TextEntry::make('credit_used')->label('Wallet Credit Used')->money('KES')->visible(fn($record) => (float)$record?->credit_used > 0),
+                \Filament\Infolists\Components\TextEntry::make('credit_stored')->label('Stored as Credit')->money('KES')->visible(fn($record) => (float)$record?->credit_stored > 0),
                 
                 \Filament\Infolists\Components\TextEntry::make('_services_list')
                     ->label('Services & Staff')
@@ -425,9 +648,10 @@ class CheckoutResource extends Resource
         return [
             'index'  => Pages\ListCheckouts::route('/'),
             'create' => Pages\CreateCheckout::route('/create'),
+            'edit'   => Pages\EditCheckout::route('/{record}/edit'),
         ];
     }
 
-    public static function canEdit($record): bool { return false; }
-    public static function canDelete($record): bool { return false; }
+    public static function canEdit($record): bool { return true; }
+    public static function canDelete($record): bool { return true; }
 }

@@ -28,6 +28,12 @@ class CustomerResource extends Resource
                 Forms\Components\TextInput::make('total_visits')->numeric()->disabled(),
                 Forms\Components\TextInput::make('free_haircuts_used')->numeric()->disabled()->label('Free Haircuts'),
                 Forms\Components\DateTimePicker::make('enrolled_at')->disabled(),
+                Forms\Components\TextInput::make('credit_balance')
+                    ->label('Wallet Balance')
+                    ->prefix('KES')
+                    ->numeric()
+                    ->default(0)
+                    ->helperText('Customer stored credit balance.'),
             ])->columns(2),
         ]);
     }
@@ -47,9 +53,24 @@ class CustomerResource extends Resource
                 Tables\Columns\TextColumn::make('total_visits')->label('Visits')->sortable(),
                 Tables\Columns\TextColumn::make('free_haircuts_used')->label('Free Haircuts'),
                 Tables\Columns\TextColumn::make('enrolled_at')->date()->sortable()->toggleable(),
+                Tables\Columns\TextColumn::make('credit_balance')
+                    ->label('Wallet')
+                    ->money('KES')
+                    ->sortable()
+                    ->badge()
+                    ->color(fn ($state) => (float)$state > 0 ? 'success' : 'gray'),
             ])
             ->defaultSort('id', 'desc')
-            ->actions([\Filament\Actions\ViewAction::make()]);
+            ->actions([
+                \Filament\Actions\ViewAction::make(),
+                \Filament\Actions\EditAction::make(),
+                \Filament\Actions\DeleteAction::make(),
+            ])
+            ->bulkActions([
+                \Filament\Actions\BulkActionGroup::make([
+                    \Filament\Actions\DeleteBulkAction::make(),
+                ]),
+            ]);
     }
 
     public static function getPages(): array
@@ -57,8 +78,11 @@ class CustomerResource extends Resource
         return [
             'index' => Pages\ListCustomers::route('/'),
             'view'  => Pages\ViewCustomer::route('/{record}'),
+            'edit'  => Pages\EditCustomer::route('/{record}/edit'),
         ];
     }
 
-    public static function canCreate(): bool { return false; }
+    public static function canCreate(): bool { return true; }
+    public static function canEdit($record): bool { return true; }
+    public static function canDelete($record): bool { return true; }
 }

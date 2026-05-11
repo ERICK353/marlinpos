@@ -5,8 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
-class Service extends Model
+class Service extends \Illuminate\Database\Eloquent\Model
 {
+    use \Illuminate\Database\Eloquent\SoftDeletes;
     protected $fillable = [
         'name',
         'is_haircut',

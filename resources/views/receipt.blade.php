@@ -109,7 +109,7 @@
     {{-- Header --}}
     <div class="header">
         <h1>Malyn Executive Barber</h1>
-        <div class="subtitle">Official Receipt</div>
+        <div class="subtitle">Receipt</div>
     </div>
 
     {{-- Meta --}}
@@ -124,17 +124,17 @@
                 <td>{{ $transaction->served_at->format('d M Y, H:i') }}</td>
             </tr>
             <tr>
-                <td>Customer</td>
+                <td>Phone</td>
                 <td>{{ $transaction->customer?->phone ?? 'Walk-in' }}</td>
             </tr>
             @if($transaction->customer?->name)
             <tr>
-                <td>Name</td>
+                <td>Customer</td>
                 <td>{{ $transaction->customer->name }}</td>
             </tr>
             @endif
             <tr>
-                <td>Cashier</td>
+                <td>Served By</td>
                 <td>{{ $transaction->reception?->name ?? '—' }}</td>
             </tr>
         </table>
@@ -145,9 +145,10 @@
     <table class="items">
         <thead>
             <tr>
-                <th style="width:40%">Service</th>
-                <th style="width:35%">Staff</th>
-                <th class="right" style="width:25%">KES</th>
+                <th style="width:35%">Service</th>
+                <th style="width:25%">Staff</th>
+                <th class="right" style="width:20%">Price</th>
+                <th class="right" style="width:20%">Tip</th>
             </tr>
         </thead>
         <tbody>
@@ -156,6 +157,7 @@
                 <td>{{ $item->service?->name ?? '—' }}</td>
                 <td>{{ $item->staff?->name ?? '—' }}</td>
                 <td class="right">{{ number_format($item->line_total, 2) }}</td>
+                <td class="right">{{ number_format($item->tip_amount, 2) }}</td>
             </tr>
             @endforeach
         </tbody>
@@ -164,13 +166,20 @@
     {{-- Totals --}}
     <table class="totals">
         <tr>
-            <td>Subtotal</td>
+            <td>Price</td>
             <td style="text-align:right;">KES {{ number_format($transaction->subtotal, 2) }}</td>
         </tr>
         @if ($transaction->discount > 0)
         <tr>
-            <td>Haircut Loyalty Reward</td>
+            <td>Loyalty Discount</td>
             <td style="text-align:right; color:#16a34a;">- KES {{ number_format($transaction->discount, 2) }}</td>
+        </tr>
+        @endif
+        @php $totalTips = $transaction->items->sum('tip_amount'); @endphp
+        @if ($totalTips > 0)
+        <tr>
+            <td>Tips for Staff</td>
+            <td style="text-align:right;">KES {{ number_format($totalTips, 2) }}</td>
         </tr>
         @endif
         <tr class="grand-row">
@@ -181,15 +190,98 @@
 
     {{-- Payment Method --}}
     <div class="payment-box">
-        <span class="method">Payment: {{ strtoupper($transaction->payment_method) }}</span>
-        @if ($transaction->mpesa_reference)
-            &nbsp;| Ref: {{ $transaction->mpesa_reference }}
+        @php
+            $isWalletSplit = $transaction->payment_method === 'wallet' && (float)$transaction->amount_tendered > 0;
+            $isCashMpesaSplit = $transaction->payment_method === 'split';
+        @endphp
+
+        {{-- Payment method label --}}
+        @if ($isWalletSplit)
+            <span class="method">💳 Split Payment: Wallet + {{ $transaction->mpesa_reference ? 'M-Pesa' : 'Cash' }}</span>
+        @elseif ($isCashMpesaSplit)
+            <span class="method">🌓 Split Payment: Cash + M-Pesa</span>
+        @else
+            <span class="method">
+                @if($transaction->payment_method === 'cash') 💵 Cash
+                @elseif($transaction->payment_method === 'mpesa') 📱 M-Pesa
+                @elseif($transaction->payment_method === 'wallet') 💰 Wallet
+                @else {{ strtoupper($transaction->payment_method) }}
+                @endif
+            </span>
+            @if ($transaction->mpesa_reference)
+                &nbsp;| Ref: {{ $transaction->mpesa_reference }}
+            @endif
+        @endif
+
+        {{-- Wallet Split breakdown --}}
+        @if ($isWalletSplit)
+        <div style="margin-top: 5px; font-size: 10px; border-top: 1px dotted #ccc; padding-top: 5px;">
+            <table style="width:100%;">
+                <tr>
+                    <td>💰 From Wallet</td>
+                    <td style="text-align:right;">KES {{ number_format((float)$transaction->credit_used, 2) }}</td>
+                </tr>
+                <tr>
+                    <td>{{ $transaction->mpesa_reference ? '📱 M-Pesa (Ref: '.$transaction->mpesa_reference.')' : '💵 Cash Given' }}</td>
+                    <td style="text-align:right;">KES {{ number_format((float)$transaction->amount_tendered, 2) }}</td>
+                </tr>
+                @if ((float)$transaction->change_due > 0)
+                <tr>
+                    <td>{{ (float)$transaction->credit_stored > 0 ? '💰 Change Stored in Wallet' : '💵 Change Given' }}</td>
+                    <td style="text-align:right;">KES {{ number_format((float)$transaction->credit_stored > 0 ? $transaction->credit_stored : $transaction->change_due, 2) }}</td>
+                </tr>
+                @endif
+            </table>
+        </div>
+
+        {{-- Cash + M-Pesa Split breakdown --}}
+        @elseif($isCashMpesaSplit)
+        <div style="margin-top: 5px; font-size: 10px; border-top: 1px dotted #ccc; padding-top: 5px;">
+            <table style="width:100%;">
+                <tr>
+                    <td>📱 Paid via M-Pesa</td>
+                    <td style="text-align:right;">KES {{ number_format((float)$transaction->mpesa_paid, 2) }}</td>
+                </tr>
+                <tr>
+                    <td>💵 Paid via Cash</td>
+                    <td style="text-align:right;">KES {{ number_format((float)$transaction->cash_paid, 2) }}</td>
+                </tr>
+                @if ((float)$transaction->change_due > 0)
+                <tr>
+                    <td>{{ (float)$transaction->credit_stored > 0 ? '💰 Change Stored in Wallet' : '💵 Change Given' }}</td>
+                    <td style="text-align:right;">KES {{ number_format((float)$transaction->credit_stored > 0 ? $transaction->credit_stored : $transaction->change_due, 2) }}</td>
+                </tr>
+                @endif
+                @if ($transaction->mpesa_reference)
+                <tr>
+                    <td colspan="2" style="font-size: 8px; color: #666; padding-top: 3px;">Ref: {{ $transaction->mpesa_reference }}</td>
+                </tr>
+                @endif
+            </table>
+        </div>
+
+        {{-- Cash-only breakdown --}}
+        @elseif($transaction->payment_method === 'cash')
+        <div style="margin-top: 5px; font-size: 10px; border-top: 1px dotted #ccc; padding-top: 5px;">
+            Money Given: KES {{ number_format((float)$transaction->amount_tendered, 2) }}<br>
+            @if((float)$transaction->credit_stored > 0)
+                Change Stored in Wallet: KES {{ number_format($transaction->credit_stored, 2) }}
+            @elseif((float)$transaction->change_due > 0)
+                Change Given: KES {{ number_format($transaction->change_due, 2) }}
+            @endif
+        </div>
+
+        {{-- Wallet-only credit note --}}
+        @elseif($transaction->payment_method === 'wallet' && (float)$transaction->credit_used > 0)
+        <div style="margin-top: 5px; font-size: 10px; color: #92400e;">
+            Wallet Credit Used: KES {{ number_format($transaction->credit_used, 2) }}
+        </div>
         @endif
     </div>
 
     {{-- Free Haircut Badge --}}
     @if ($transaction->is_free_haircut)
-    <div class="loyalty-badge">Free Haircut Applied — Loyalty Reward</div>
+    <div class="loyalty-badge">Free Shave Used — Loyalty Reward</div>
     @endif
 
     {{-- Notes --}}

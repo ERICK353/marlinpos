@@ -4,17 +4,16 @@ namespace App\Filament\Reception\Resources\CheckoutResource\Pages;
 
 use App\Filament\Reception\Resources\CheckoutResource;
 use Filament\Actions;
-use Filament\Resources\Pages\ListRecords;
+use Filament\Resources\Pages\EditRecord;
 
-class ListCheckouts extends ListRecords
+class EditCheckout extends EditRecord
 {
     protected static string $resource = CheckoutResource::class;
-    protected static ?string $title = 'Transactions';
 
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make()->label('New Checkout'),
+            Actions\DeleteAction::make(),
         ];
     }
 }

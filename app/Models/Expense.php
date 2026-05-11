@@ -12,6 +12,7 @@ class Expense extends Model
         'description',
         'category',
         'amount',
+        'status',
         'spent_at',
     ];
 

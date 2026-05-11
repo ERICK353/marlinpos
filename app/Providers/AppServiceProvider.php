@@ -25,6 +25,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        \App\Models\Transaction::observe(\App\Observers\TransactionObserver::class);
+        
         FilamentView::registerRenderHook(
             PanelsRenderHook::HEAD_END,
             fn (): string => '<link rel="manifest" href="/manifest.json">

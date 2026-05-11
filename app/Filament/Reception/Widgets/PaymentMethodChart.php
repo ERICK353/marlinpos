@@ -10,7 +10,7 @@ class PaymentMethodChart extends ChartWidget
 {
     protected ?string $heading = 'Payment Methods';
     protected ?string $maxHeight = '300px';
-    protected static ?int $sort = 4;
+    protected static ?int $sort = 10;
 
     protected function getData(): array
     {

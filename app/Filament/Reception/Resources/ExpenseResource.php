@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Filament\Shop\Resources;
+namespace App\Filament\Reception\Resources;
 
-use App\Filament\Shop\Resources\ExpenseResource\Pages;
+use App\Filament\Reception\Resources\ExpenseResource\Pages;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use Filament\Forms;
@@ -74,7 +74,7 @@ class ExpenseResource extends Resource
                     ->color('info')
                     ->html()
                     ->formatStateUsing(function ($state) {
-                        $cat = ExpenseCategory::withTrashed()->where('name', $state)->first();
+                        $cat = \App\Models\ExpenseCategory::withTrashed()->where('name', $state)->first();
                         if ($cat && $cat->trashed()) {
                             return "{$state} <span style='background-color:#fee2e2;color:#b91c1c;padding:1px 4px;border-radius:9999px;font-size:8px;font-weight:800;text-transform:uppercase;margin-left:3px;border:1px solid #fecaca;'>Deleted</span>";
                         }
@@ -105,7 +105,7 @@ class ExpenseResource extends Resource
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('category')
-                    ->options(fn () => ExpenseCategory::withTrashed()->orderBy('name')->pluck('name', 'name')->toArray()),
+                    ->options(fn () => \App\Models\ExpenseCategory::withTrashed()->orderBy('name')->pluck('name', 'name')->toArray()),
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
                         'paid'   => 'Paid',

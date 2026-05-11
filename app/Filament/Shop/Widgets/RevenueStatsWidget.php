@@ -38,9 +38,9 @@ class RevenueStatsWidget extends BaseWidget
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color('info'),
 
-            Stat::make('Net Profit (Month)', 'KES ' . number_format($monthProfit, 2))
-                ->description('Revenue - Expenses')
-                ->descriptionIcon('heroicon-m-chart-pie')
+            Stat::make('Net Revenue', 'KES ' . number_format($monthProfit, 2))
+                ->description('Total profit after expenses')
+                ->descriptionIcon('heroicon-m-calculator')
                 ->color($monthProfit >= 0 ? 'success' : 'danger'),
         ];
     }
