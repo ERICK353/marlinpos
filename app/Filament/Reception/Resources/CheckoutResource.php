@@ -273,22 +273,27 @@ class CheckoutResource extends Resource
                                     ->label('Amount via M-Pesa')
                                     ->numeric()
                                     ->prefix('KES')
-                                    ->live()
+                                    ->live(debounce: 250)
                                     ->required(fn (Get $get) => $get('payment_method') === 'split')
                                     ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                         $total = (float) $get('total');
                                         $mpesa = (float) $state;
-                                        $set('amount_tendered', max(0, $total - $mpesa));
+                                        $cash_due = max(0, $total - $mpesa);
+                                        $set('cash_paid', $cash_due);
+                                        $set('amount_tendered', $cash_due);
                                         $set('change_due', 0);
                                     }),
                                 Forms\Components\TextInput::make('cash_paid')
                                     ->label('Amount via Cash')
                                     ->numeric()
                                     ->prefix('KES')
-                                    ->live()
+                                    ->live(debounce: 250)
                                     ->required(fn (Get $get) => $get('payment_method') === 'split')
-                                    ->afterStateUpdated(function ($state, Set $set) {
-                                        $set('amount_tendered', (float) $state);
+                                    ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                                        $total = (float) $get('total');
+                                        $cash = (float) $state;
+                                        $set('mpesa_paid', max(0, $total - $cash));
+                                        $set('amount_tendered', $cash);
                                         $set('change_due', 0);
                                     }),
                             ]),
@@ -363,7 +368,7 @@ class CheckoutResource extends Resource
                             })
                             ->prefix('KES')
                             ->numeric()
-                            ->live()
+                            ->live(debounce: 250)
                             ->required(fn (Get $get) => 
                                 $get('payment_method') === 'cash' || 
                                 $get('payment_method') === 'split' ||
