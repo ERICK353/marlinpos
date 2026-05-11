@@ -18,6 +18,9 @@ return new class extends Migration
         if (!Schema::hasColumn('expenses', 'deleted_at')) {
             Schema::table('expenses', function (Blueprint $table) { $table->softDeletes(); });
         }
+        if (!Schema::hasColumn('users', 'deleted_at')) {
+            Schema::table('users', function (Blueprint $table) { $table->softDeletes(); });
+        }
 
         // 2. Add Wallet fields to customers
         if (!Schema::hasColumn('customers', 'credit_balance')) {
@@ -68,6 +71,9 @@ return new class extends Migration
  
     public function down(): void
     {
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropSoftDeletes();
+        });
         Schema::table('customers', function (Blueprint $table) {
             $table->dropSoftDeletes();
             $table->dropColumn('credit_balance');
