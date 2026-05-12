@@ -37,4 +37,14 @@ class ViewTransaction extends ViewRecord
             ])->columns(2),
         ]);
     }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            \Filament\Actions\RestoreAction::make(),
+            \Filament\Actions\ForceDeleteAction::make()
+                ->requiresConfirmation()
+                ->modalDescription('Are you absolutely sure you want to permanently delete this transaction? This action cannot be undone and will permanently remove all related financial data.'),
+        ];
+    }
 }

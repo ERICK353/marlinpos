@@ -26,6 +26,7 @@ class TransactionResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->withTrashed())
             ->columns([
                 Tables\Columns\TextColumn::make('customer.phone')
                     ->label('Customer')
@@ -33,12 +34,18 @@ class TransactionResource extends Resource
                     ->searchable()
                     ->html()
                     ->formatStateUsing(function ($state, $record) {
-                        if (! $record->customer_id) return 'Walk-in';
-                        $phone = $state ?? 'No Phone';
+                        if (! $record->customer_id) {
+                            $phone = 'Walk-in';
+                        } else {
+                            $phone = $state ?? 'No Phone';
+                        }
                         $tag = $record->customer?->trashed() 
                             ? " <span style='background-color: #fee2e2; color: #b91c1c; padding: 1px 5px; border-radius: 9999px; font-size: 8px; font-weight: 800; text-transform: uppercase; margin-left: 4px; border: 1px solid #fecaca;'>Deleted</span>" 
                             : "";
-                        return "<span>{$phone}</span>{$tag}";
+                        $trashed = $record->trashed() 
+                            ? " <span style='background-color: #fef2f2; color: #ef4444; padding: 2px 6px; border-radius: 9999px; font-size: 9px; font-weight: 800; text-transform: uppercase; margin-left: 6px; border: 1px solid #fca5a5;'>Soft Deleted</span>" 
+                            : "";
+                        return "<span>{$phone}</span>{$tag}{$trashed}";
                     }),
                 Tables\Columns\TextColumn::make('items')
                     ->label('Staff')
@@ -109,7 +116,22 @@ class TransactionResource extends Resource
                 Tables\Filters\TernaryFilter::make('is_free_haircut')->label('Free Haircut'),
             ])
             ->defaultSort('served_at', 'desc')
-            ->actions([\Filament\Actions\ViewAction::make()]);
+            ->actions([
+                \Filament\Actions\ViewAction::make(),
+                \Filament\Actions\RestoreAction::make()
+                    ->requiresConfirmation(),
+                \Filament\Actions\ForceDeleteAction::make()
+                    ->requiresConfirmation()
+                    ->modalDescription('Are you absolutely sure you want to permanently delete this transaction? This action cannot be undone and will permanently remove all related financial data.'),
+            ])
+            ->bulkActions([
+                \Filament\Actions\BulkActionGroup::make([
+                    \Filament\Actions\RestoreBulkAction::make(),
+                    \Filament\Actions\ForceDeleteBulkAction::make()
+                        ->requiresConfirmation()
+                        ->modalDescription('Are you absolutely sure you want to permanently delete the selected transactions? This action cannot be undone and will permanently remove all related financial data.'),
+                ]),
+            ]);
     }
 
     public static function getPages(): array
@@ -123,4 +145,6 @@ class TransactionResource extends Resource
     public static function canCreate(): bool { return false; }
     public static function canEdit($record): bool { return false; }
     public static function canDelete($record): bool { return false; }
+    public static function canRestore($record): bool { return true; }
+    public static function canForceDelete($record): bool { return true; }
 }

@@ -449,7 +449,9 @@ class CheckoutResource extends Resource
                             ->label('Notes (optional)')
                             ->rows(2)->placeholder('Optional notes…')->columnSpanFull(),
                     ]),
-            ])->columnSpanFull()
+            ])
+            ->columnSpanFull()
+            ->submitAction(new \Illuminate\Support\HtmlString(\Illuminate\Support\Facades\Blade::render('<x-filament::button type="submit" size="sm" color="primary" wire:loading.attr="disabled" wire:loading.class="opacity-50 cursor-not-allowed">Save</x-filament::button>'))),
         ]);
     }
 
