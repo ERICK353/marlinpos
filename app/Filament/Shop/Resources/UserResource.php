@@ -20,7 +20,9 @@ class UserResource extends Resource
 
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
     {
-        return parent::getEloquentQuery()->where('email', '!=', 'developer@marlin.local');
+        return parent::getEloquentQuery()
+            ->where('email', '!=', 'developer@marlin.local')
+            ->withTrashed();
     }
 
     public static function form(Schema $schema): Schema
@@ -67,8 +69,19 @@ class UserResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->withTrashed())
             ->columns([
-                Tables\Columns\TextColumn::make('name')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('name')
+                    ->searchable()
+                    ->sortable()
+                    ->html()
+                    ->formatStateUsing(function ($state, $record) {
+                        $name = $state ?? 'Unnamed';
+                        if ($record->trashed()) {
+                            return "{$name} <span style='background-color: #fee2e2; color: #b91c1c; padding: 1px 5px; border-radius: 9999px; font-size: 8px; font-weight: 800; text-transform: uppercase; border: 1px solid #fecaca; margin-left: 8px;'>Deleted</span>";
+                        }
+                        return $name;
+                    }),
                 Tables\Columns\TextColumn::make('email')->searchable(),
                 Tables\Columns\TextColumn::make('phone')->placeholder('—'),
                 Tables\Columns\TextColumn::make('gender')
@@ -102,9 +115,15 @@ class UserResource extends Resource
             ->actions([
                 \Filament\Actions\EditAction::make(),
                 \Filament\Actions\DeleteAction::make(),
+                \Filament\Actions\RestoreAction::make(),
+                \Filament\Actions\ForceDeleteAction::make(),
             ])
             ->bulkActions([
-                \Filament\Actions\BulkActionGroup::make([\Filament\Actions\DeleteBulkAction::make()]),
+                \Filament\Actions\BulkActionGroup::make([
+                    \Filament\Actions\DeleteBulkAction::make(),
+                    \Filament\Actions\RestoreBulkAction::make(),
+                    \Filament\Actions\ForceDeleteBulkAction::make(),
+                ]),
             ]);
     }
 

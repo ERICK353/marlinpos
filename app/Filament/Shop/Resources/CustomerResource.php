@@ -17,6 +17,11 @@ class CustomerResource extends Resource
     public static function getNavigationIcon(): string { return 'heroicon-o-user-group'; }
     public static function getNavigationGroup(): ?string { return 'Shop'; }
     public static function getNavigationSort(): ?int { return 2; }
+    
+    public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        return parent::getEloquentQuery()->withTrashed();
+    }
 
     public static function form(Schema $schema): Schema
     {
@@ -41,9 +46,19 @@ class CustomerResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->withTrashed())
             ->columns([
-                Tables\Columns\TextColumn::make('id')->label('Customer ID')->sortable(),
-                Tables\Columns\TextColumn::make('name')->searchable()->placeholder('Unnamed'),
+                Tables\Columns\TextColumn::make('name')
+                    ->searchable()
+                    ->placeholder('Unnamed')
+                    ->html()
+                    ->formatStateUsing(function ($state, $record) {
+                        $name = $state ?? 'Unnamed';
+                        if ($record->trashed()) {
+                            return "{$name} <span style='background-color: #fee2e2; color: #b91c1c; padding: 1px 5px; border-radius: 9999px; font-size: 8px; font-weight: 800; text-transform: uppercase; border: 1px solid #fecaca; margin-left: 8px;'>Deleted</span>";
+                        }
+                        return $name;
+                    }),
                 Tables\Columns\TextColumn::make('phone')->searchable(),
                 Tables\Columns\TextColumn::make('loyalty_count')
                     ->label('Haircuts')
@@ -61,14 +76,21 @@ class CustomerResource extends Resource
                     ->color(fn ($state) => (float)$state > 0 ? 'success' : 'gray'),
             ])
             ->defaultSort('id', 'desc')
+            ->filters([
+                //
+            ])
             ->actions([
                 \Filament\Actions\ViewAction::make(),
                 \Filament\Actions\EditAction::make(),
                 \Filament\Actions\DeleteAction::make(),
+                \Filament\Actions\RestoreAction::make(),
+                \Filament\Actions\ForceDeleteAction::make(),
             ])
             ->bulkActions([
                 \Filament\Actions\BulkActionGroup::make([
                     \Filament\Actions\DeleteBulkAction::make(),
+                    \Filament\Actions\RestoreBulkAction::make(),
+                    \Filament\Actions\ForceDeleteBulkAction::make(),
                 ]),
             ]);
     }

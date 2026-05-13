@@ -145,10 +145,10 @@
     <table class="items">
         <thead>
             <tr>
-                <th style="width:35%">Service</th>
-                <th style="width:25%">Staff</th>
-                <th class="right" style="width:20%">Price</th>
-                <th class="right" style="width:20%">Tip</th>
+                <th style="width:40%">Service</th>
+                <th style="width:30%">Staff</th>
+                <th class="right" style="width:30%">Price</th>
+                {{-- <th class="right" style="width:20%">Tip</th> --}}
             </tr>
         </thead>
         <tbody>
@@ -157,7 +157,7 @@
                 <td>{{ $item->service?->name ?? '—' }}</td>
                 <td>{{ $item->staff?->name ?? '—' }}</td>
                 <td class="right">{{ number_format($item->line_total, 2) }}</td>
-                <td class="right">{{ number_format($item->tip_amount, 2) }}</td>
+                {{-- <td class="right">{{ number_format($item->tip_amount, 2) }}</td> --}}
             </tr>
             @endforeach
         </tbody>
@@ -175,6 +175,7 @@
             <td style="text-align:right; color:#16a34a;">- KES {{ number_format($transaction->discount, 2) }}</td>
         </tr>
         @endif
+        {{--
         @php $totalTips = $transaction->items->sum('tip_amount'); @endphp
         @if ($totalTips > 0)
         <tr>
@@ -182,6 +183,7 @@
             <td style="text-align:right;">KES {{ number_format($totalTips, 2) }}</td>
         </tr>
         @endif
+        --}}
         <tr class="grand-row">
             <td><strong>TOTAL</strong></td>
             <td style="text-align:right;"><strong>KES {{ number_format($transaction->total, 2) }}</strong></td>

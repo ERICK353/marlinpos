@@ -60,7 +60,7 @@ class CheckoutResource extends Resource
 
                         Forms\Components\Select::make('customer_id')
                             ->label('Select Existing Customer')
-                            ->relationship('customer', 'name')
+                            ->relationship('customer', 'name', fn ($query) => $query->withoutTrashed())
                             ->searchable()
                             ->preload()
                             ->live()
@@ -186,6 +186,7 @@ class CheckoutResource extends Resource
                                     ->visible(fn ($record) => filled($record))
                                     ->columnSpan(2),
 
+/*
                                 Forms\Components\TextInput::make('tip_amount')
                                     ->label('Tip Amount')
                                     ->prefix('KES')
@@ -196,6 +197,7 @@ class CheckoutResource extends Resource
                                     ->live()
                                     ->disabled(fn ($record) => filled($record))
                                     ->columnSpan(fn ($record) => filled($record) ? 2 : 4),
+                                */
                                 
                                 Forms\Components\Hidden::make('line_total')->dehydrated(),
                             ])
@@ -226,7 +228,8 @@ class CheckoutResource extends Resource
                                 $discount = ((bool) $get('_loyalty_eligible') && $hasHaircut) ? 250 : 0;
                                 if ($discount > 0) $subtotal = $subtotal - $maxHaircutPrice + 250;
                                 
-                                $tips = collect($state ?? [])->sum(fn($i) => (float)($i['tip_amount'] ?? 0));
+                                // $tips = collect($state ?? [])->sum(fn($i) => (float)($i['tip_amount'] ?? 0));
+                                $tips = 0;
                                 $set('subtotal', $subtotal);
                                 $set('discount', $discount);
                                 $set('total', max(0, (float)$subtotal - (float)$discount + (float)$tips));
@@ -272,6 +275,7 @@ class CheckoutResource extends Resource
                                 Forms\Components\TextInput::make('mpesa_paid')
                                     ->label('Amount via M-Pesa')
                                     ->numeric()
+                                    ->minValue(0)
                                     ->prefix('KES')
                                     ->live(debounce: 250)
                                     ->required(fn (Get $get) => $get('payment_method') === 'split')
@@ -286,6 +290,7 @@ class CheckoutResource extends Resource
                                 Forms\Components\TextInput::make('cash_paid')
                                     ->label('Amount via Cash')
                                     ->numeric()
+                                    ->minValue(0)
                                     ->prefix('KES')
                                     ->live(debounce: 250)
                                     ->required(fn (Get $get) => $get('payment_method') === 'split')
@@ -466,18 +471,22 @@ class CheckoutResource extends Resource
                     ->label('Customer')
                     ->searchable()
                     ->html()
-                    ->formatStateUsing(function ($state, $record) {
+                    ->getStateUsing(function ($record) {
                         if (! $record->customer_id) return 'Walk-in';
-                        $name = $state ?? 'Unnamed';
+                        return $record->customer?->name ?? 'Unnamed';
+                    })
+                    ->formatStateUsing(function ($state, $record) {
+                        if ($state === 'Walk-in') return 'Walk-in';
+                        
                         if ($record->customer?->trashed()) {
                             return "
                                 <div style='display: flex; align-items: center; gap: 8px;'>
-                                    <span>{$name}</span>
+                                    <span>{$state}</span>
                                     <span style='background-color: #fee2e2; color: #b91c1c; padding: 1px 5px; border-radius: 9999px; font-size: 8px; font-weight: 800; text-transform: uppercase; border: 1px solid #fecaca;'>Deleted</span>
                                 </div>
                             ";
                         }
-                        return $name;
+                        return $state;
                     }),
                 Tables\Columns\TextColumn::make('customer.phone')->label('Phone')->placeholder('—')->searchable()->toggleable(),
                 Tables\Columns\TextColumn::make('customer.loyalty_count')
@@ -501,20 +510,29 @@ class CheckoutResource extends Resource
                     ->label('Staff')
                     ->html()
                     ->formatStateUsing(function ($record) {
-                        return $record->items->map(function ($item) {
-                            $name = $item->staff?->name ?? 'Unknown';
-                            $tag = $item->staff?->trashed() 
+                        return $record->items->map(fn($item) => [
+                            'name' => $item->staff?->name ?? 'Unknown',
+                            'trashed' => (bool)$item->staff?->trashed()
+                        ])
+                        ->unique('name')
+                        ->map(function ($staff) {
+                            $tag = $staff['trashed'] 
                                 ? " <span style='background-color: #fee2e2; color: #b91c1c; padding: 1px 5px; border-radius: 9999px; font-size: 8px; font-weight: 800; text-transform: uppercase; margin-left: 4px; border: 1px solid #fecaca;'>Deleted</span>" 
                                 : "";
-                            return "• {$name}{$tag}";
-                        })->unique()->implode('<br>');
+                            return "• {$staff['name']}{$tag}";
+                        })->implode('<br>');
                     })
                     ->searchable(query: fn (Builder $query, string $search): Builder => 
                         $query->whereHas('items.staff', fn ($q) => $q->where('name', 'like', "%{$search}%"))
                     )->toggleable(),
-                Tables\Columns\TextColumn::make('items.service.name')
+                Tables\Columns\TextColumn::make('services_unique')
                     ->label('Services')
-                    ->searchable()
+                    ->getStateUsing(fn ($record) => $record->items->map(fn($i) => $i->service?->name ?? 'Unknown')->unique())
+                    ->listWithLineBreaks()
+                    ->bulleted()
+                    ->searchable(query: fn (Builder $query, string $search): Builder => 
+                        $query->whereHas('items.service', fn ($q) => $q->where('name', 'like', "%{$search}%"))
+                    )
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('payment_method')
                     ->badge()
@@ -557,11 +575,13 @@ class CheckoutResource extends Resource
                     ->label('Discount')
                     ->money('KES')
                     ->toggleable(isToggledHiddenByDefault: true),
+                /*
                 Tables\Columns\TextColumn::make('tip_amount')
                     ->label('Tip Amount')
                     ->money('KES')
                     ->state(fn ($record) => $record->items->sum('tip_amount'))
                     ->toggleable(isToggledHiddenByDefault: true),
+                */
                 Tables\Columns\TextColumn::make('total')->money('KES'),
                 Tables\Columns\IconColumn::make('is_free_haircut')->boolean()->label('Free')->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('served_at')
