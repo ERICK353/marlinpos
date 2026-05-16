@@ -14,7 +14,7 @@ class TransactionItem extends Model
         'quantity',
         'unit_price',
         'line_total',
-        'tip_amount',
+        'discount_amount',
         'commission_rate',
         'commission_amount',
     ];
@@ -24,7 +24,7 @@ class TransactionItem extends Model
         return [
             'unit_price'        => 'decimal:2',
             'line_total'        => 'decimal:2',
-            'tip_amount'        => 'decimal:2',
+            'discount_amount'   => 'decimal:2',
             'commission_rate'   => 'decimal:2',
             'commission_amount' => 'decimal:2',
         ];

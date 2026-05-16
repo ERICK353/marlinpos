@@ -186,9 +186,8 @@ class CheckoutResource extends Resource
                                     ->visible(fn ($record) => filled($record))
                                     ->columnSpan(2),
 
-/*
-                                Forms\Components\TextInput::make('tip_amount')
-                                    ->label('Tip Amount')
+                                Forms\Components\TextInput::make('discount_amount')
+                                    ->label('Service Discount')
                                     ->prefix('KES')
                                     ->numeric()
                                     ->default(0)
@@ -197,7 +196,6 @@ class CheckoutResource extends Resource
                                     ->live()
                                     ->disabled(fn ($record) => filled($record))
                                     ->columnSpan(fn ($record) => filled($record) ? 2 : 4),
-                                */
                                 
                                 Forms\Components\Hidden::make('line_total')->dehydrated(),
                             ])
@@ -228,11 +226,10 @@ class CheckoutResource extends Resource
                                 $discount = ((bool) $get('_loyalty_eligible') && $hasHaircut) ? 250 : 0;
                                 if ($discount > 0) $subtotal = $subtotal - $maxHaircutPrice + 250;
                                 
-                                // $tips = collect($state ?? [])->sum(fn($i) => (float)($i['tip_amount'] ?? 0));
-                                $tips = 0;
+                                $serviceDiscounts = collect($state ?? [])->sum(fn($i) => (float)($i['discount_amount'] ?? 0));
                                 $set('subtotal', $subtotal);
                                 $set('discount', $discount);
-                                $set('total', max(0, (float)$subtotal - (float)$discount + (float)$tips));
+                                $set('total', max(0, (float)$subtotal - (float)$discount - (float)$serviceDiscounts));
                             })
                             ->required(),
                     ]),
@@ -575,13 +572,11 @@ class CheckoutResource extends Resource
                     ->label('Discount')
                     ->money('KES')
                     ->toggleable(isToggledHiddenByDefault: true),
-                /*
-                Tables\Columns\TextColumn::make('tip_amount')
-                    ->label('Tip Amount')
+                Tables\Columns\TextColumn::make('discount_amount')
+                    ->label('Service Discounts')
                     ->money('KES')
-                    ->state(fn ($record) => $record->items->sum('tip_amount'))
+                    ->state(fn ($record) => $record->items->sum('discount_amount'))
                     ->toggleable(isToggledHiddenByDefault: true),
-                */
                 Tables\Columns\TextColumn::make('total')->money('KES'),
                 Tables\Columns\IconColumn::make('is_free_haircut')->boolean()->label('Free')->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('served_at')
@@ -660,7 +655,13 @@ class CheckoutResource extends Resource
                 
                 \Filament\Infolists\Components\TextEntry::make('_services_list')
                     ->label('Services & Staff')
-                    ->getStateUsing(fn ($record) => $record->items->map(fn($i) => ($i->service->name ?? 'Service') . ' — handled by ' . ($i->staff->name ?? 'Unknown') . ' (KES ' . number_format($i->line_total) . ')'))
+                    ->getStateUsing(fn ($record) => $record->items->map(function($i) {
+                        $label = ($i->service->name ?? 'Service') . ' — handled by ' . ($i->staff->name ?? 'Unknown') . ' (KES ' . number_format($i->line_total) . ')';
+                        if ($i->discount_amount > 0) {
+                            $label .= ' [Discount: KES ' . number_format($i->discount_amount) . ']';
+                        }
+                        return $label;
+                    }))
                     ->listWithLineBreaks()
                     ->bulleted()
                     ->columnSpanFull(),

@@ -97,13 +97,11 @@ class TransactionResource extends Resource
                     ->label('Loyalty Discount')
                     ->money('KES')
                     ->toggleable(isToggledHiddenByDefault: true),
-                /*
-                Tables\Columns\TextColumn::make('tip_amount')
-                    ->label('Tip Amount')
+                Tables\Columns\TextColumn::make('discount_amount')
+                    ->label('Service Discounts')
                     ->money('KES')
-                    ->state(fn ($record) => $record->items->sum('tip_amount'))
+                    ->state(fn ($record) => $record->items->sum('discount_amount'))
                     ->toggleable(isToggledHiddenByDefault: true),
-                */
                 Tables\Columns\TextColumn::make('total')->money('KES')->sortable(),
                 Tables\Columns\IconColumn::make('is_free_haircut')->boolean()->label('Free')->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('served_at')
