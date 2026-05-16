@@ -54,8 +54,17 @@ class TransactionItem extends Model
                 if ($service) {
                     // Only fill if not already set (to avoid overwriting custom prices like the 250 for free shaves)
                     if (empty($item->unit_price)) $item->unit_price = $service->price;
-                    if (empty($item->line_total)) $item->line_total = $service->price * ($item->quantity ?? 1);
+                    
+                    // Initial line total calculation (gross)
+                    if (empty($item->line_total)) {
+                        $item->line_total = $item->unit_price * ($item->quantity ?? 1);
+                    }
                 }
+            }
+
+            // Ensure line_total accounts for the discount_amount
+            if ($item->discount_amount > 0) {
+                $item->line_total = (float)$item->line_total - (float)$item->discount_amount;
             }
 
             // Auto-populate commission rate if missing
@@ -66,9 +75,10 @@ class TransactionItem extends Model
                 }
             }
 
-            // Calculate commission amount
+            // Calculate commission amount (on the net price: unit_price - discount)
             if ($item->unit_price && $item->commission_rate && !$item->commission_amount) {
-                $item->commission_amount = ($item->unit_price * $item->commission_rate) / 100;
+                $netPrice = max(0, (float)$item->unit_price - (float)($item->discount_amount ?? 0));
+                $item->commission_amount = ($netPrice * $item->commission_rate) / 100;
             }
         });
     }

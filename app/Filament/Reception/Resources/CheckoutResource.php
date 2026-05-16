@@ -594,7 +594,6 @@ class CheckoutResource extends Resource
             ])
             ->actions([
                 \Filament\Actions\ViewAction::make(),
-                \Filament\Actions\EditAction::make(),
                 \Filament\Actions\DeleteAction::make(),
                 \Filament\Actions\Action::make('print_receipt')
                     ->label('Print Receipt')
@@ -676,10 +675,9 @@ class CheckoutResource extends Resource
         return [
             'index'  => Pages\ListCheckouts::route('/'),
             'create' => Pages\CreateCheckout::route('/create'),
-            'edit'   => Pages\EditCheckout::route('/{record}/edit'),
         ];
     }
 
-    public static function canEdit($record): bool { return true; }
+    public static function canEdit($record): bool { return false; }
     public static function canDelete($record): bool { return true; }
 }
