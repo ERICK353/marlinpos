@@ -165,6 +165,8 @@ class CheckoutResource extends Resource
                                     ->label('Service')
                                     ->options(fn () => Service::active()->pluck('name', 'id'))
                                     ->required()
+                                    ->searchable()
+                                    ->preload()
                                     ->disabled(fn ($record) => filled($record))
                                     ->live()
                                     ->columnSpan(4),

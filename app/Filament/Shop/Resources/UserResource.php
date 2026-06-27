@@ -61,6 +61,8 @@ class UserResource extends Resource
                     ->default(40)
                     ->suffix('%')
                     ->required()
+                    ->minValue(0)
+                    ->maxValue(100)
                     ->helperText('Default is 40%. This is the percentage of service price the staff receives.'),
             ])->columns(2),
         ]);

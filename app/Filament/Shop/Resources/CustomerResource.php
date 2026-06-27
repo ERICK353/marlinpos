@@ -38,6 +38,7 @@ class CustomerResource extends Resource
                     ->prefix('KES')
                     ->numeric()
                     ->default(0)
+                    ->minValue(0)
                     ->helperText('Customer stored credit balance.'),
             ])->columns(2),
         ]);

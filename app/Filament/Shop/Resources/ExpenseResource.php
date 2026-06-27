@@ -34,7 +34,8 @@ class ExpenseResource extends Resource
                 Forms\Components\TextInput::make('amount')
                     ->numeric()
                     ->prefix('KES')
-                    ->required(),
+                    ->required()
+                    ->minValue(0),
                 Forms\Components\ToggleButtons::make('status')
                     ->options([
                         'paid'   => 'Paid',

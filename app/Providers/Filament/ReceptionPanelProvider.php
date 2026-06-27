@@ -41,7 +41,7 @@ class ReceptionPanelProvider extends PanelProvider
             ->discoverResources(in: app_path('Filament/Reception/Resources'), for: 'App\\Filament\\Reception\\Resources')
             ->discoverPages(in: app_path('Filament/Reception/Pages'), for: 'App\\Filament\\Reception\\Pages')
             ->pages([
-                \Filament\Pages\Dashboard::class,
+                \App\Filament\Reception\Pages\Dashboard::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Reception/Widgets'), for: 'App\\Filament\\Reception\\Widgets')
             ->middleware([

@@ -4,32 +4,30 @@ namespace App\Filament\Shop\Widgets;
 
 use App\Models\Transaction;
 use Filament\Widgets\ChartWidget;
-use Flowframe\Trend\Trend;
 use Illuminate\Support\Carbon;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 
 class PaymentMethodChartWidget extends ChartWidget
 {
+    use InteractsWithPageFilters;
     protected ?string $heading = 'Payment Methods (This Month)';
     protected static ?int $sort = 5;
 
     protected function getData(): array
     {
-        $start = Carbon::now()->startOfMonth();
-        $end = Carbon::now()->endOfMonth();
+        $startDate = $this->filters['startDate'] ?? null;
+        $endDate = $this->filters['endDate'] ?? null;
 
-        $cashTotal = Trend::query(Transaction::where('payment_method', 'cash'))
-            ->between($start, $end)
-            ->perMonth()
-            ->sum('total')
-            ->first()
-            ->aggregate ?? 0;
+        $start = $startDate ? Carbon::parse($startDate)->startOfDay() : Carbon::now()->startOfMonth();
+        $end = $endDate ? Carbon::parse($endDate)->endOfDay() : Carbon::now()->endOfMonth();
 
-        $mpesaTotal = Trend::query(Transaction::where('payment_method', 'mpesa'))
-            ->between($start, $end)
-            ->perMonth()
-            ->sum('total')
-            ->first()
-            ->aggregate ?? 0;
+        $cashTotal = Transaction::where('payment_method', 'cash')
+            ->whereBetween('created_at', [$start, $end])
+            ->sum('total');
+
+        $mpesaTotal = Transaction::where('payment_method', 'mpesa')
+            ->whereBetween('created_at', [$start, $end])
+            ->sum('total');
 
         return [
             'datasets' => [

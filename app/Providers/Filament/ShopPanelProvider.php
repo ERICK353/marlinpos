@@ -39,7 +39,7 @@ class ShopPanelProvider extends PanelProvider
             ->discoverResources(in: app_path('Filament/Shop/Resources'), for: 'App\\Filament\\Shop\\Resources')
             ->discoverPages(in: app_path('Filament/Shop/Pages'), for: 'App\\Filament\\Shop\\Pages')
             ->pages([
-                Dashboard::class,
+                \App\Filament\Shop\Pages\Dashboard::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Shop/Widgets'), for: 'App\\Filament\\Shop\\Widgets')
             ->widgets([
