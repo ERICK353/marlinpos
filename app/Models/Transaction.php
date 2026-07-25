@@ -17,6 +17,7 @@ class Transaction extends Model
         'payment_method',
         'mpesa_reference',
         'is_free_haircut',
+        'is_bonus',
         'subtotal',
         'discount',
         'total',
@@ -34,6 +35,7 @@ class Transaction extends Model
     {
         return [
             'is_free_haircut' => 'boolean',
+            'is_bonus'        => 'boolean',
             'subtotal'        => 'decimal:2',
             'discount'        => 'decimal:2',
             'total'           => 'decimal:2',

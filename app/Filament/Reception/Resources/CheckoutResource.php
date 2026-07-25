@@ -197,7 +197,15 @@ class CheckoutResource extends Resource
                                     ->required()
                                     ->live()
                                     ->disabled(fn ($record) => filled($record))
-                                    ->columnSpan(fn ($record) => filled($record) ? 2 : 4),
+                                    ->columnSpan(fn ($record) => filled($record) ? 2 : 2),
+
+                                Forms\Components\Toggle::make('is_bonus')
+                                    ->label('Bonus')
+                                    ->default(false)
+                                    ->live()
+                                    ->disabled(fn ($record) => filled($record))
+                                    ->visible(fn (Get $get) => (bool) $get('../../is_walk_in'))
+                                    ->columnSpan(2),
                                 
                                 Forms\Components\Hidden::make('line_total')->dehydrated(),
                             ])
@@ -217,8 +225,13 @@ class CheckoutResource extends Resource
                                 foreach ($state as $item) {
                                     if ($sId = $item['service_id'] ?? null) {
                                         if ($s = $services[$sId] ?? null) {
+                                            $itemIsBonus = (bool) ($item['is_bonus'] ?? false);
+                                            if ($itemIsBonus) {
+                                                continue;
+                                            }
                                             $subtotal += $s->price;
-                                            if ($s->is_haircut) {
+                                            $isHaircut = $s->is_haircut || stripos($s->name, 'Haircut') !== false || stripos($s->name, 'Hair Cut') !== false;
+                                            if ($isHaircut) {
                                                 $hasHaircut = true;
                                                 $maxHaircutPrice = max($maxHaircutPrice, $s->price);
                                             }
@@ -581,6 +594,7 @@ class CheckoutResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('total')->money('KES'),
                 Tables\Columns\IconColumn::make('is_free_haircut')->boolean()->label('Free')->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\IconColumn::make('is_bonus')->boolean()->label('Bonus')->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('served_at')
                     ->label('Time')
                     ->dateTime()
@@ -638,6 +652,7 @@ class CheckoutResource extends Resource
                     }),
                 \Filament\Infolists\Components\TextEntry::make('total')->label('Total Paid')->money('KES'),
                 \Filament\Infolists\Components\IconEntry::make('is_free_haircut')->boolean()->label('Free Haircut'),
+                \Filament\Infolists\Components\IconEntry::make('is_bonus')->boolean()->label('Bonus Haircut'),
 
                 \Filament\Infolists\Components\TextEntry::make('mpesa_paid')
                     ->label('Paid via M-Pesa')
@@ -657,7 +672,8 @@ class CheckoutResource extends Resource
                 \Filament\Infolists\Components\TextEntry::make('_services_list')
                     ->label('Services & Staff')
                     ->getStateUsing(fn ($record) => $record->items->map(function($i) {
-                        $label = ($i->service->name ?? 'Service') . ' — handled by ' . ($i->staff->name ?? 'Unknown') . ' (KES ' . number_format($i->line_total) . ')';
+                        $bonusTag = $i->is_bonus ? ' [Bonus Haircut - KES 0 Rev]' : '';
+                        $label = ($i->service->name ?? 'Service') . ' — handled by ' . ($i->staff->name ?? 'Unknown') . ' (KES ' . number_format($i->line_total) . ')' . $bonusTag;
                         if ($i->discount_amount > 0) {
                             $label .= ' [Discount: KES ' . number_format($i->discount_amount) . ']';
                         }

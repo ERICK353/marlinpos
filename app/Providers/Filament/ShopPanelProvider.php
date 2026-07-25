@@ -19,7 +19,6 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use App\Filament\Shop\Widgets\RevenueStatsWidget;
 use App\Filament\Shop\Widgets\StaffPerformanceWidget;
-use App\Filament\Shop\Widgets\LoyaltyStatsWidget;
 use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
 
 class ShopPanelProvider extends PanelProvider
@@ -45,7 +44,6 @@ class ShopPanelProvider extends PanelProvider
             ->widgets([
                 RevenueStatsWidget::class,
                 StaffPerformanceWidget::class,
-                LoyaltyStatsWidget::class,
                 \App\Filament\Shop\Widgets\PaymentMethodChartWidget::class,
                 \App\Filament\Shop\Widgets\ServiceDistributionChart::class,
                 \App\Filament\Shop\Widgets\ShopRevenueChart::class,

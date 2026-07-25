@@ -4,13 +4,21 @@ namespace App\Filament\Reception\Widgets;
 
 use App\Models\Transaction;
 use Filament\Widgets\ChartWidget;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Illuminate\Support\Carbon;
 
 class CustomerTypeChart extends ChartWidget
 {
-    protected ?string $heading = 'New vs Returning Customers (This Month)';
-    protected static ?int $sort = 3;
+    use InteractsWithPageFilters;
+
+    protected ?string $heading = 'New vs Returning Customers';
+    protected static ?int $sort = 7;
     protected ?string $maxHeight = '300px';
+
+    public static function canView(): bool
+    {
+        return false;
+    }
 
     protected function getType(): string
     {
@@ -19,14 +27,18 @@ class CustomerTypeChart extends ChartWidget
 
     protected function getData(): array
     {
-        $startOfMonth = Carbon::now()->startOfMonth();
+        $startDate = $this->filters['startDate'] ?? null;
+        $endDate   = $this->filters['endDate'] ?? null;
+
+        $start = $startDate ? Carbon::parse($startDate)->startOfDay() : Carbon::now()->startOfMonth();
+        $end   = $endDate   ? Carbon::parse($endDate)->endOfDay()     : Carbon::now()->endOfMonth();
 
         $returningCount = Transaction::whereNotNull('customer_id')
-            ->where('served_at', '>=', $startOfMonth)
+            ->whereBetween('served_at', [$start, $end])
             ->count();
 
         $newCount = Transaction::whereNull('customer_id')
-            ->where('served_at', '>=', $startOfMonth)
+            ->whereBetween('served_at', [$start, $end])
             ->count();
 
         return [

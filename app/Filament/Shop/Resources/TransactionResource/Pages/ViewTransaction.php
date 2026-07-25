@@ -22,10 +22,14 @@ class ViewTransaction extends ViewRecord
                     ->formatStateUsing(fn ($state) => strtoupper($state)),
                 Infolists\Components\TextEntry::make('mpesa_reference')->placeholder('—'),
                 Infolists\Components\IconEntry::make('is_free_haircut')->boolean()->label('Free Haircut'),
+                Infolists\Components\IconEntry::make('is_bonus')->boolean()->label('Bonus Haircut'),
                 
                 \Filament\Infolists\Components\TextEntry::make('_services_list')
                     ->label('Services & Staff')
-                    ->getStateUsing(fn ($record) => $record->items->map(fn($i) => ($i->service->name ?? 'Service') . ' — handled by ' . ($i->staff->name ?? 'Unknown') . ' (KES ' . number_format($i->line_total) . ')'))
+                    ->getStateUsing(fn ($record) => $record->items->map(function($i) {
+                        $bonusTag = $i->is_bonus ? ' [Bonus]' : '';
+                        return ($i->service->name ?? 'Service') . ' — handled by ' . ($i->staff->name ?? 'Unknown') . ' (KES ' . number_format($i->line_total) . ')' . $bonusTag;
+                    }))
                     ->listWithLineBreaks()
                     ->bulleted()
                     ->columnSpanFull(),

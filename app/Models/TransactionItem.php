@@ -17,6 +17,7 @@ class TransactionItem extends Model
         'discount_amount',
         'commission_rate',
         'commission_amount',
+        'is_bonus',
     ];
 
     protected function casts(): array
@@ -27,6 +28,7 @@ class TransactionItem extends Model
             'discount_amount'   => 'decimal:2',
             'commission_rate'   => 'decimal:2',
             'commission_amount' => 'decimal:2',
+            'is_bonus'          => 'boolean',
         ];
     }
 
@@ -48,6 +50,26 @@ class TransactionItem extends Model
     protected static function booted()
     {
         static::creating(function ($item) {
+            // Handle walk-in bonus haircut logic
+            if ($item->is_bonus) {
+                $service = Service::find($item->service_id);
+                if ($service && ($service->is_haircut || stripos($service->name, 'Haircut') !== false || stripos($service->name, 'Hair Cut') !== false)) {
+                    $item->unit_price = $service->price;
+                    $item->line_total = 0;
+
+                    // Fetch commission rate or fallback to staff user default
+                    if (!$item->commission_rate && $item->staff_user_id) {
+                        $staff = User::find($item->staff_user_id);
+                        if ($staff) {
+                            $item->commission_rate = $staff->commission_rate ?? 40;
+                        }
+                    }
+                    $rate = $item->commission_rate ?: 40;
+                    $item->commission_amount = (250.00 * $rate) / 100;
+                    return;
+                }
+            }
+
             // Auto-populate price if missing (null, empty string, or 0)
             if ($item->service_id && (empty($item->unit_price) || empty($item->line_total))) {
                 $service = Service::find($item->service_id);

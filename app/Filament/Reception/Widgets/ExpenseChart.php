@@ -4,24 +4,30 @@ namespace App\Filament\Reception\Widgets;
 
 use App\Models\Expense;
 use Filament\Widgets\ChartWidget;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Flowframe\Trend\Trend;
 use Flowframe\Trend\TrendValue;
 use Illuminate\Support\Carbon;
 
 class ExpenseChart extends ChartWidget
 {
-    protected ?string $heading = 'Shop Expenses (Monthly — Current Year)';
+    use InteractsWithPageFilters;
+
+    protected ?string $heading = 'Shop Expenses';
     protected ?string $maxHeight = '300px';
     protected string $color = 'danger';
-    protected static ?int $sort = 6;
+    protected static ?int $sort = 4;
 
     protected function getData(): array
     {
+        $startDate = $this->filters['startDate'] ?? null;
+        $endDate   = $this->filters['endDate'] ?? null;
+
+        $start = $startDate ? Carbon::parse($startDate)->startOfDay() : Carbon::now()->startOfYear();
+        $end   = $endDate   ? Carbon::parse($endDate)->endOfDay()     : Carbon::now()->endOfYear();
+
         $data = Trend::model(Expense::class)
-            ->between(
-                start: Carbon::now()->startOfYear(),
-                end: Carbon::now()->endOfYear(),
-            )
+            ->between(start: $start, end: $end)
             ->perMonth()
             ->sum('amount');
 

@@ -41,6 +41,7 @@ class StaffTransactionResource extends Resource
                     ),
                 Tables\Columns\TextColumn::make('subtotal')->label('Value')->money('KES'),
                 Tables\Columns\IconColumn::make('is_free_haircut')->boolean()->label('Free'),
+                Tables\Columns\IconColumn::make('is_bonus')->boolean()->label('Bonus'),
                 Tables\Columns\TextColumn::make('payment_method')
                     ->badge()
                     ->formatStateUsing(fn ($state) => match($state) {
@@ -93,9 +94,17 @@ class StaffTransactionResource extends Resource
                         'wallet' => 'warning',
                         default => 'gray',
                     }),
-                Infolists\Components\TextEntry::make('is_free_haircut')->badge()->label('Loyalty Reward')
-                    ->state(fn ($record) => $record->is_free_haircut ? 'FREE HAIRCUT' : 'Standard')
-                    ->color(fn ($state) => $state === 'FREE HAIRCUT' ? 'warning' : 'gray'),
+                Infolists\Components\TextEntry::make('is_free_haircut')->badge()->label('Reward / Bonus')
+                    ->state(function ($record) {
+                        if ($record->is_bonus) return 'BONUS HAIRCUT';
+                        if ($record->is_free_haircut) return 'FREE HAIRCUT';
+                        return 'Standard';
+                    })
+                    ->color(function ($state) {
+                        if ($state === 'BONUS HAIRCUT') return 'success';
+                        if ($state === 'FREE HAIRCUT') return 'warning';
+                        return 'gray';
+                    }),
                 Infolists\Components\TextEntry::make('subtotal')->label('Gross Value')->money('KES'),
                 Infolists\Components\TextEntry::make('items.service.name')
                     ->label('Services Performed')

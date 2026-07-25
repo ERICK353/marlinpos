@@ -154,7 +154,7 @@
         <tbody>
             @foreach ($transaction->items as $item)
             <tr>
-                <td>{{ $item->service?->name ?? '—' }}</td>
+                <td>{{ $item->service?->name ?? '—' }} @if($item->is_bonus) <small style="color:#166534; font-weight:bold;">(Bonus)</small> @endif</td>
                 <td>{{ $item->staff?->name ?? '—' }}</td>
                 <td class="right">{{ number_format($item->line_total, 2) }}</td>
                 <td class="right">{{ $item->discount_amount > 0 ? '-'.number_format($item->discount_amount, 2) : '—' }}</td>
@@ -279,9 +279,11 @@
         @endif
     </div>
 
-    {{-- Free Haircut Badge --}}
+    {{-- Free Haircut / Bonus Badge --}}
     @if ($transaction->is_free_haircut)
     <div class="loyalty-badge">Free Shave Used — Loyalty Reward</div>
+    @elseif ($transaction->is_bonus)
+    <div class="loyalty-badge" style="background: #dcfce7; border-color: #86efac; color: #166534;">Bonus Haircut</div>
     @endif
 
     {{-- Notes --}}

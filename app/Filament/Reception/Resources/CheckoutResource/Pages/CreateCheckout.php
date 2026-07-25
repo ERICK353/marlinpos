@@ -87,6 +87,8 @@ class CreateCheckout extends CreateRecord
         $isFree = (bool) ($raw['_loyalty_eligible'] ?? false);
         $data['is_free_haircut'] = $isFree;
 
+        $hasAnyBonus = false;
+
         // ── Snapshot Prices: Ensure historical prices are kept ──────────────
         if (! empty($data['items'])) {
             $serviceIds = array_column($data['items'], 'service_id');
@@ -108,6 +110,17 @@ class CreateCheckout extends CreateRecord
             foreach ($data['items'] as $index => &$item) {
                 $service = $services[$item['service_id']] ?? null;
                 if ($service) {
+                    $itemIsBonus = ! empty($item['is_bonus']);
+
+                    if ($itemIsBonus) {
+                        $hasAnyBonus = true;
+                        $item['unit_price'] = $service->price;
+                        $item['line_total'] = 0;
+                        $item['is_bonus']   = true;
+                        $item['commission_amount'] = 250.00;
+                        continue;
+                    }
+
                     $finalPrice = $service->price;
                     
                     // If this is the chosen free haircut, set price to 250
@@ -117,9 +130,12 @@ class CreateCheckout extends CreateRecord
                     
                     $item['unit_price'] = $finalPrice;
                     $item['line_total'] = $finalPrice;
+                    $item['is_bonus']   = false;
                 }
             }
         }
+
+        $data['is_bonus'] = $hasAnyBonus;
 
         return $data;
     }

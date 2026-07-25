@@ -104,6 +104,7 @@ class TransactionResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('total')->money('KES')->sortable(),
                 Tables\Columns\IconColumn::make('is_free_haircut')->boolean()->label('Free')->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\IconColumn::make('is_bonus')->boolean()->label('Bonus')->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('served_at')
                     ->label('Time')
                     ->dateTime()
@@ -126,6 +127,7 @@ class TransactionResource extends Resource
                     ->searchable()
                     ->preload(),
                 Tables\Filters\TernaryFilter::make('is_free_haircut')->label('Free Haircut'),
+                Tables\Filters\TernaryFilter::make('is_bonus')->label('Bonus Haircut'),
             ])
             ->defaultSort('served_at', 'desc')
             ->actions([

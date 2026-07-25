@@ -13,25 +13,6 @@ class LoyaltyStatsWidget extends BaseWidget
 
     protected function getStats(): array
     {
-        $enrolled      = Customer::whereNotNull('enrolled_at')->count();
-        $freeHaircuts  = Transaction::where('is_free_haircut', true)->count();
-        $eligible      = Customer::where('loyalty_count', '>=', 9)->count();
-
-        return [
-            Stat::make('Enrolled Members', $enrolled)
-                ->description('In loyalty programme')
-                ->descriptionIcon('heroicon-m-identification')
-                ->color('primary'),
-
-            Stat::make('Free Haircuts Given', $freeHaircuts)
-                ->description('All time')
-                ->descriptionIcon('heroicon-m-gift')
-                ->color('success'),
-
-            Stat::make('Ready for Free Haircut', $eligible)
-                ->description('9 haircuts completed')
-                ->descriptionIcon('heroicon-m-star')
-                ->color('warning'),
-        ];
+        return [];
     }
 }

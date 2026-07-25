@@ -4,24 +4,31 @@ namespace App\Filament\Shop\Widgets;
 
 use App\Models\Transaction;
 use Filament\Widgets\ChartWidget;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Flowframe\Trend\Trend;
 use Flowframe\Trend\TrendValue;
 use Illuminate\Support\Carbon;
 
 class ShopRevenueChart extends ChartWidget
 {
-    protected ?string $heading = 'Monthly Revenue (Current Year)';
+    use InteractsWithPageFilters;
+
+    protected ?string $heading = 'Monthly Revenue';
     protected ?string $maxHeight = '300px';
     protected static ?int $sort = 3;
 
     protected function getData(): array
     {
+        $startDate = $this->filters['startDate'] ?? null;
+        $endDate   = $this->filters['endDate'] ?? null;
+
+        $start = $startDate ? Carbon::parse($startDate)->startOfDay() : Carbon::now()->startOfYear();
+        $end   = $endDate   ? Carbon::parse($endDate)->endOfDay()     : Carbon::now()->endOfYear();
+
         $data = Trend::model(Transaction::class)
             ->dateColumn('served_at')
-            ->between(
-                start: Carbon::now()->startOfYear(),
-                end: Carbon::now()->endOfYear(),
-            )          ->perMonth()
+            ->between(start: $start, end: $end)
+            ->perMonth()
             ->sum('total');
 
         return [
